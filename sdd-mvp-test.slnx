@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/hexArch/" />
+  <Folder Name="/hexArch/application/">
+    <Project Path="hexArch/application/Application.csproj" />
+  </Folder>
+  <Folder Name="/hexArch/data/">
+    <Project Path="hexArch/data/Data.csproj" />
+  </Folder>
+  <Folder Name="/hexArch/domain/">
+    <Project Path="hexArch/domain/Domain.csproj" />
+  </Folder>
+  <Folder Name="/hexArch/repository/">
+    <Project Path="hexArch/repository/Repository.csproj" />
+  </Folder>
+  <Project Path="sosMVP/sosMVP.csproj" />
+  <Project Path="test/test.csproj" />
+</Solution>
