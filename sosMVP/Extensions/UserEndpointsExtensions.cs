@@ -18,19 +18,22 @@ public static class UserEndpointsExtensions
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status500InternalServerError)
+            .WithName("InsertUser");
 
         adminEndpoints.MapGet("/user/{id}", UserHandlers.GetUserAsync)
             .Produces<UserDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("GetUser");
 
         adminEndpoints.MapGet("/users/", UserHandlers.GetUsersAsync)
             .Produces<IEnumerable<UserDTO>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status403Forbidden)
+            .WithName("GetUsers");
 
         adminEndpoints.MapPut("/user/{id}", UserHandlers.UpdateUserAsync)
             .Produces(StatusCodes.Status204NoContent)
@@ -38,26 +41,30 @@ public static class UserEndpointsExtensions
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
-            .Produces(StatusCodes.Status500InternalServerError);
+            .Produces(StatusCodes.Status500InternalServerError)
+            .WithName("UpdateUser");
 
         adminEndpoints.MapPut("/userv/{id}", UserHandlers.UpdateUserVisibilityAsync)
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("UpdateUserVisibility");
 
         endpoints.MapPost("/login/", UserHandlers.LoginAsync)
             .Produces<TokenResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("Login");
 
         adminEndpoints.MapPost("/adminv/", UserHandlers.AdminVerificationAsync)
             .Produces<AdminConfirmation>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("AdminVerification");
 
         return endpoints;
     }
