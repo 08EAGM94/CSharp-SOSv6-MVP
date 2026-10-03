@@ -1,7 +1,7 @@
 ﻿# Especificacion — Caso de Uso: Usuario
 
 - **ID de spec:** `001-users-endpoints-mvp`
-- **Estado:** Borrador para revision
+- **Estado:** Implementada
 - **Constitucion aplicable:** `docs/constitution.md`
 - **Alcance de este documento:** QUE se construye y POR QUE. Las decisiones de implementacion (mecanismo concreto de sesion, estructura del manejo de errores, estrategia de pruebas) corresponden al plan, no a esta spec.
 
@@ -135,6 +135,7 @@ Actualiza un usuario.
 | RF-5.4 | Si algun dato del DTO no cumple las reglas de negocio del usuario, entonces el sistema respondera con el codigo`400` y no realizara ninguna modificacion.                                                              |
 | RF-5.5 | Cuando la actualizacion se complete, el sistema respondera con el codigo`204` y sin cuerpo; el caso de uso`UpdateUser` es`void` y no produce ningun objeto de retorno.                                                                                                          |
 | RF-5.6 | Si el`Id` de la ruta no es un valor numerico valido, entonces el sistema respondera con el codigo`400` y no realizara ninguna modificacion.                                                                          |
+| RF-5.7 | Si el`Id` de la ruta corresponde al administrador autenticado y la peticion es `PUT user/{id}` para modificar su propio `Alias`, `Password` u otro campo del `UserDTO` (distinto de `Visibility`), el sistema realizara la actualizacion y respondera con el codigo `204`. La unica accion prohibida sobre la cuenta propia es la autodeshabilitacion, que se rige por RF-6.7 del bloque `UpdateUserVisibility`. |
 
 ### RF-6 — `UpdateUserVisibility` (PUT `userv/{id}`)
 
@@ -263,6 +264,7 @@ Todo fallo de negocio producido por un caso de uso se traduce a un codigo HTTP y
 | CE-16 | Se emite un error en cualquiera de los siete endpoints.                                               | El mensaje al usuario se entrega en espanol.                       |
 | CE-17 | El campo`Visibility` recibe un valor no admitido.                                                   | `400` y no se realiza ninguna modificacion.                      |
 | CE-20 | `GetUser` devuelve un usuario con `Visibility = DISABLED`.                                             | `200` con el usuario (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
+| CE-21 | Un administrador autenticado invoca `PUT user/{id}` con su propio `Id` para modificar su `Alias`, `Password` u otro campo del `UserDTO` (distinto de `Visibility`). | `204` con la cuenta actualizada (no `403`; decisión del usuario, opción A: el admin SÍ puede modificar su propia cuenta; la unica prohibicion es la autodeshabilitacion de RF-6.7). |
 
 ---
 
@@ -305,11 +307,6 @@ El caso de uso Usuario se considera concluido cuando:
 17. Cada endpoint cuenta con su prueba automatizada y con la prueba de su caso limite y su caso de error, segun `docs/constitution.md`; cada prueba crea sus propios datos.
 18. El proyecto compila y todas las pruebas pasan.
 19. `Sosv6DbContext` no contiene ninguna cadena de conexion en su codigo, y el arranque falla si la seccion`ConnectionStrings` no trae la clave esperada (RNF-15).
+20. Un administrador autenticado puede invocar `PUT user/{id}` con su propio `Id` para modificar su `Alias`, `Password` u otros campos del `UserDTO` (distinto de `Visibility`) y la operacion responde `204` con la cuenta actualizada; la unica prohibicion sobre la cuenta propia es la autodeshabilitacion (RF-6.7).
 
 ---
-
-## 9. Dudas abiertas
-
-Queda una duda abierta que debe aclararse antes de implementar:
-
-- **[NECESITA ACLARACION]** Si un administrador puede modificar su propia cuenta (su`Alias` y su contrasena); solo se especifico la prohibicion de deshabilitarse.
