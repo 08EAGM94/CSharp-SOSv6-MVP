@@ -43,7 +43,7 @@ Consecuencias tecnicas:
 - Se anade un unico `PackageReference` a `sosMVP/sosMVP.csproj`, version `10.0.0` para alinearse con EF Core.
 - `System.IdentityModel.Tokens.Jwt` llega como dependencia transitiva de ese paquete; **no** se declara por separado.
 - `test/` **no** recibe el paquete: los tests del token trabajan con la fabrica de emision, no con el middleware de validacion.
-- Criterio de finalizacion 15 de la spec exige verificar con `dotnet list package` que no aparece ningun paquete fuera de la lista.
+- Criterio de finalizacion 16 de la spec exige verificar con `dotnet list package` que no aparece ningun paquete fuera de la lista.
 
 **Alternativa descartada:** emitir el token a mano con `System.IdentityModel.Tokens.Jwt` y validar con `Microsoft.AspNetCore.Authentication.JwtBearer` ausente, haciendo la comprobacion de firma en un middleware propio. Se descarto porque obliga a reimplementar la validacion (firma, expiracion, `iss`, `aud`) que el middleware ya resuelve, y porque `dotnet list package` seguiria mostrando los paquetes de identidad, con el mismo coste y mas codigo.
 
@@ -379,7 +379,7 @@ Ademas, un test dedicado a la metadata de `Produces` (seccion 4.6): se construye
 
 `test/Fakes/` con implementaciones de `IRepository<UserEntity, UserDTO>`, `IUserRepository` e `IMapper<,>` que registran las llamadas recibidas y devuelven valores programados. Se prefieren a un `InMemory` de EF Core porque `UpdateAsyncInfo` y `UpdateAsyncVisibility` del repositorio usan `ExecuteUpdateAsync`, que no es soportado por el proveedor en memoria; ademas, los fakes no tocan la base de datos real.
 
-Cada test crea sus propios datos (criterio 13 de finalizacion), sin sembrado compartido.
+Cada test crea sus propios datos (criterio 17 de finalizacion), sin sembrado compartido.
 
 ---
 
@@ -462,6 +462,6 @@ Ademas, estas dos dudas de la seccion 9 de la spec siguen abiertas y este plan l
 9. Anadir la `ProjectReference` a `sosMVP.csproj` en `test/test.csproj`.
 10. Suites de `test/` de la seccion 6.1, empezando por `AdminVerification` (precedencia `AdminNickname`/`AdminPwd`), `Login` (lista de cierre de claims) y `UpdateUserVisibility` (auto-deshabilitacion).
 11. `dotnet build` y `dotnet test` en verde.
-12. `dotnet list package` para confirmar el criterio de finalizacion 15 de la spec.
-13. Comprobar que el aviso del compilador sobre la cadena de conexion desaparecio (criterio 18 de la spec).
-14. Contrastar cada criterio de finalizacion (seccion 8 de la spec, 18 puntos) contra las pruebas escritas.
+12. `dotnet list package` para confirmar el criterio de finalizacion 16 de la spec.
+13. Comprobar que el aviso del compilador sobre la cadena de conexion desaparecio (criterio 19 de la spec).
+14. Contrastar cada criterio de finalizacion (seccion 8 de la spec, 19 puntos) contra las pruebas escritas.

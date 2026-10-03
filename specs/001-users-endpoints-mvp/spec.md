@@ -103,7 +103,7 @@ Registra un usuario nuevo.
 
 ### RF-3 — `GetUser` (GET `user/{id}`)
 
-Obtiene un registro de usuario.
+Obtiene un registro de usuario. **No filtra por visibilidad**: devuelve `200` con el registro aunque su `Visibility` sea `DISABLED` (decisión del usuario, opción A). El código `404` queda reservado exclusivamente a identificadores inexistentes. Este comportamiento es coherente con el repositorio de usuarios, cuya consulta por identificador no aplica filtro de visibilidad y solo lanza `KeyNotFoundException` cuando el ID no existe; `hexArch/repository` es intocable (Constitución principio 5).
 
 | #      | Criterio de aceptacion                                                                                                                               |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,6 +111,7 @@ Obtiene un registro de usuario.
 | RF-3.2 | Cuando el DTO tenga asignado el`Id` del parametro de ruta, el sistema devolvera el registro de usuario correspondiente a ese identificador.        |
 | RF-3.3 | Si el identificador no corresponde a ningun usuario, entonces el sistema respondera con el codigo`404`.                                            |
 | RF-3.4 | Si el`Id` de la ruta no es un valor numerico valido, entonces el sistema respondera con el codigo`400` y no consultara ningun registro.          |
+| RF-3.5 | Si el usuario existe pero tiene `Visibility = DISABLED`, el sistema devolvera `200` con el `UserDTO` completo; **no** respondera `404`.               |
 
 ### RF-4 — `GetUsers` (GET `users/`)
 
@@ -261,6 +262,7 @@ Todo fallo de negocio producido por un caso de uso se traduce a un codigo HTTP y
 | CE-15 | El DTO de`InsertUser` o `UpdateUser` viola una regla de negocio.                                  | `400` y no se escribe ningun dato.                               |
 | CE-16 | Se emite un error en cualquiera de los siete endpoints.                                               | El mensaje al usuario se entrega en espanol.                       |
 | CE-17 | El campo`Visibility` recibe un valor no admitido.                                                   | `400` y no se realiza ninguna modificacion.                      |
+| CE-20 | `GetUser` devuelve un usuario con `Visibility = DISABLED`.                                             | `200` con el usuario (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
 
 ---
 
@@ -291,23 +293,23 @@ El caso de uso Usuario se considera concluido cuando:
 5. El `Id` del parametro de ruta prevalece sobre el `Id` del cuerpo en `GetUser`, `UpdateUser` y `UpdateUserVisibility`.
 6. `UpdateUserVisibility` aplica unicamente el campo `Visibility` y rechaza con `403` que el administrador se deshabilite a si mismo.
 7. `GetUsers` no devuelve registros con `Visibility = DISABLED`.
-8. Los origenes de fallo de la seccion 4 se traducen a `404`, `400` o `500` segun corresponda, con mensajes en espanol.
-9. `login` se expone unicamente por`POST`, recibe las credenciales en el cuerpo, solo reconoce registros con `Visibility = ENABLED`, emite sesion con el rol del usuario autenticado, ninguna sesion se emite para credenciales invalidas y la sesion vence a los 30 minutos de su emision, sin renovacion por actividad.
-10. Los`claims` de la sesion emitida se construyen por lista de cierre: contienen el DTO del usuario limitado a`Id`, `Name`, `Surname`, `Nickname`, `Role` y `Signature`, y omiten`Password` y `ConfPwd` aunque el DTO las informe (RF-7.8, RF-7.9, RF-7.11 y RNF-12). `Visibility` no forma parte de los`claims` ni participa en el control de acceso (RF-7.12).
-11. `InsertUser` responde `201` sin cuerpo ni cabecera `Location`; `UpdateUser` y `UpdateUserVisibility` responden `204` sin cuerpo, por ser `void` sus casos de uso; `AdminVerification` responde `200` con `confirmed = true` cuando la contrasena coincide y `403` cuando no coincide.
-12. Ninguna respuesta de la API expone contrasenas, ninguna contrasena se almacena en texto plano y ninguna credencial se recibe por la URL (RNF-8, RNF-10 y RNF-13).
-13. `UpdateUserVisibility` solo propaga a la capa de datos las propiedades `Id` y `Visibility`, ignorando cualquier otra propiedad del DTO recibido (RF-6.2 y CE-2).
-14. `AdminVerification` se expone unicamente por`POST`, recibe `AdminNickname` y `AdminPwd` en el cuerpo, exige sesion valida de rol`admin` y nunca toma la contrasena del administrador de los`claims` ni de la URL (RF-8.0, RF-8.5 y RF-8.6).
-15. El paquete`Microsoft.AspNetCore.Authentication.JwtBearer` es el unico autorizado por RNF-14, y`dotnet list package` no muestra ningun otro paquete fuera de la lista de la constitucion.
-16. Cada endpoint cuenta con su prueba automatizada y con la prueba de su caso limite y su caso de error, segun `docs/constitution.md`; cada prueba crea sus propios datos.
-17. El proyecto compila y todas las pruebas pasan.
-18. `Sosv6DbContext` no contiene ninguna cadena de conexion en su codigo, y el arranque falla si la seccion`ConnectionStrings` no trae la clave esperada (RNF-15).
+8. `GetUser` devuelve el registro aunque tenga `Visibility = DISABLED` (no filtra en consulta individual; `404` solo para ID inexistente; decisión del usuario, opción A).
+9. Los origenes de fallo de la seccion 4 se traducen a `404`, `400` o `500` segun corresponda, con mensajes en espanol.
+10. `login` se expone unicamente por`POST`, recibe las credenciales en el cuerpo, solo reconoce registros con `Visibility = ENABLED`, emite sesion con el rol del usuario autenticado, ninguna sesion se emite para credenciales invalidas y la sesion vence a los 30 minutos de su emision, sin renovacion por actividad.
+11. Los`claims` de la sesion emitida se construyen por lista de cierre: contienen el DTO del usuario limitado a`Id`, `Name`, `Surname`, `Nickname`, `Role` y `Signature`, y omiten`Password` y `ConfPwd` aunque el DTO las informe (RF-7.8, RF-7.9, RF-7.11 y RNF-12). `Visibility` no forma parte de los`claims` ni participa en el control de acceso (RF-7.12).
+12. `InsertUser` responde `201` sin cuerpo ni cabecera `Location`; `UpdateUser` y `UpdateUserVisibility` responden `204` sin cuerpo, por ser `void` sus casos de uso; `AdminVerification` responde `200` con `confirmed = true` cuando la contrasena coincide y `403` cuando no coincide.
+13. Ninguna respuesta de la API expone contrasenas, ninguna contrasena se almacena en texto plano y ninguna credencial se recibe por la URL (RNF-8, RNF-10 y RNF-13).
+14. `UpdateUserVisibility` solo propaga a la capa de datos las propiedades `Id` y `Visibility`, ignorando cualquier otra propiedad del DTO recibido (RF-6.2 y CE-2).
+15. `AdminVerification` se expone unicamente por`POST`, recibe `AdminNickname` y `AdminPwd` en el cuerpo, exige sesion valida de rol`admin` y nunca toma la contrasena del administrador de los`claims` ni de la URL (RF-8.0, RF-8.5 y RF-8.6).
+16. El paquete`Microsoft.AspNetCore.Authentication.JwtBearer` es el unico autorizado por RNF-14, y`dotnet list package` no muestra ningun otro paquete fuera de la lista de la constitucion.
+17. Cada endpoint cuenta con su prueba automatizada y con la prueba de su caso limite y su caso de error, segun `docs/constitution.md`; cada prueba crea sus propios datos.
+18. El proyecto compila y todas las pruebas pasan.
+19. `Sosv6DbContext` no contiene ninguna cadena de conexion en su codigo, y el arranque falla si la seccion`ConnectionStrings` no trae la clave esperada (RNF-15).
 
 ---
 
 ## 9. Dudas abiertas
 
-Las siguientes dudas **no** fueron resueltas durante la especificacion y deben aclararse antes de implementar:
+Queda una duda abierta que debe aclararse antes de implementar:
 
-- **[NECESITA ACLARACION]** Si`GetUser` (consulta de un solo registro) debe devolver un usuario con`Visibility = DISABLED` o tratarlo como inexistente con`404`; solo se especifico el criterio de exclusion para los listados de multiples registros.
 - **[NECESITA ACLARACION]** Si un administrador puede modificar su propia cuenta (su`Alias` y su contrasena); solo se especifico la prohibicion de deshabilitarse.

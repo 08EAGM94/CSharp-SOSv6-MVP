@@ -16,6 +16,8 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptio
 
 builder.Services.AddUserModule();
 
+builder.Services.AddTypeModule();
+
 builder.Services.AddScoped<ApiExceptionHandler>();
 
 builder.Services
@@ -44,5 +46,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapUserEndpoints();
+
+app.MapTypeEndpoints();
 
 app.Run();

@@ -34,4 +34,25 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddTypeModule(this IServiceCollection services)
+    {
+        services.AddScoped<TypeRepository>();
+        services.AddScoped<IRepository<TypeEntity, TypeDTO>>(
+            provider => provider.GetRequiredService<TypeRepository>());
+        services.AddScoped<ISelectRepository<TypeDTO>>(
+            provider => provider.GetRequiredService<TypeRepository>());
+
+        services.AddScoped<IMapper<TypeDTO, TypeEntity>, TypeDTOtoEntityMapper>();
+
+        services.AddScoped<CommonService<TypeEntity, TypeDTO>>();
+        services.AddScoped<ICommonService<TypeDTO>>(
+            provider => provider.GetRequiredService<CommonService<TypeEntity, TypeDTO>>());
+
+        services.AddScoped<SelectService<TypeDTO>>();
+        services.AddScoped<ISelectService<TypeDTO>>(
+            provider => provider.GetRequiredService<SelectService<TypeDTO>>());
+
+        return services;
+    }
 }
