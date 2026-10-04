@@ -18,6 +18,8 @@ builder.Services.AddUserModule();
 
 builder.Services.AddTypeModule();
 
+builder.Services.AddEnterpriseModule();
+
 builder.Services.AddScoped<ApiExceptionHandler>();
 
 builder.Services
@@ -48,5 +50,7 @@ app.UseAuthorization();
 app.MapUserEndpoints();
 
 app.MapTypeEndpoints();
+
+app.MapEnterpriseEndpoints();
 
 app.Run();

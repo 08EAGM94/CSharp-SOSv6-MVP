@@ -55,4 +55,25 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddEnterpriseModule(this IServiceCollection services)
+    {
+        services.AddScoped<EnterpriseRepository>();
+        services.AddScoped<IRepository<EnterpriseEntity, EnterpriseDTO>>(
+            provider => provider.GetRequiredService<EnterpriseRepository>());
+        services.AddScoped<ISelectRepository<EnterpriseDTO>>(
+            provider => provider.GetRequiredService<EnterpriseRepository>());
+
+        services.AddScoped<IMapper<EnterpriseDTO, EnterpriseEntity>, EnterpriseDTOtoEntityMapper>();
+
+        services.AddScoped<CommonService<EnterpriseEntity, EnterpriseDTO>>();
+        services.AddScoped<ICommonService<EnterpriseDTO>>(
+            provider => provider.GetRequiredService<CommonService<EnterpriseEntity, EnterpriseDTO>>());
+
+        services.AddScoped<SelectService<EnterpriseDTO>>();
+        services.AddScoped<ISelectService<EnterpriseDTO>>(
+            provider => provider.GetRequiredService<SelectService<EnterpriseDTO>>());
+
+        return services;
+    }
 }
