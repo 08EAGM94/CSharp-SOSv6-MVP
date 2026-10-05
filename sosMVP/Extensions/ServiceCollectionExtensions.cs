@@ -91,4 +91,23 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddContactModule(this IServiceCollection services)
+    {
+        services.AddScoped<ContactRepository>();
+        services.AddScoped<IByEnterpriseRepository<ContactEntity, ContactDTO>>(
+            provider => provider.GetRequiredService<ContactRepository>());
+        services.AddScoped<ISelectRepository<ContactDTO>>(
+            provider => provider.GetRequiredService<ContactRepository>());
+
+        services.AddScoped<EnterpriseChildrenService<ContactEntity, ContactDTO>>();
+        services.AddScoped<IEnterpriseChildrenService<ContactDTO>>(
+            provider => provider.GetRequiredService<EnterpriseChildrenService<ContactEntity, ContactDTO>>());
+
+        services.AddScoped<SelectService<ContactDTO>>();
+        services.AddScoped<ISelectService<ContactDTO>>(
+            provider => provider.GetRequiredService<SelectService<ContactDTO>>());
+
+        return services;
+    }
 }

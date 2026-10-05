@@ -22,6 +22,8 @@ builder.Services.AddEnterpriseModule();
 
 builder.Services.AddDeviceModule();
 
+builder.Services.AddContactModule();
+
 builder.Services.AddScoped<ApiExceptionHandler>();
 
 builder.Services
@@ -56,5 +58,7 @@ app.MapTypeEndpoints();
 app.MapEnterpriseEndpoints();
 
 app.MapDeviceEndpoints();
+
+app.MapContactEndpoints();
 
 app.Run();

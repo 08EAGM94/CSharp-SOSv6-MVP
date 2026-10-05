@@ -1,7 +1,7 @@
 # Especificación — Caso de Uso: Equipo
 
 - **ID de spec:** `004-device-endpoints-mvp`
-- **Estado:** borrador
+- **Estado:** Implementada y validada.
 - **Constitución aplicable:** `docs/constitution.md`
 - **Alcance de este documento:** QUÉ se construye y POR QUÉ. Las decisiones de implementación (mecanismo concreto de sesión, estructura del manejo de errores, estrategia de pruebas) corresponden al plan, no a esta spec.
 
@@ -21,11 +21,11 @@ El objetivo es que **cualquier usuario autenticado** pueda consultar el catálog
 
 ## 2. Usuarios
 
-| Actor | Descripción | Puede hacer |
-|-------|-------------|-------------|
-| **Administrador** | Usuario con rol `admin`. Único autorizado a gobernar el catálogo de equipos. | Iniciar sesión (vía caso de uso Usuario), crear, consultar, listar, actualizar y cambiar visibilidad de equipos. |
-| **Usuario operativo** | Usuario con un rol distinto de `admin`. Existe, puede autenticarse y consultar el catálogo. | Iniciar sesión, consultar un equipo, listar equipos por empresa, listar equipos por empresa para selects. |
-| **Consumidor de la API** | Cliente (aplicación o herramienta) que invoca los endpoints de esta spec. | Invocar los seis endpoints respetando el contrato de cada uno. |
+| Actor                          | Descripción                                                                                  | Puede hacer                                                                                                        |
+| ------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Administrador**        | Usuario con rol`admin`. Único autorizado a gobernar el catálogo de equipos.               | Iniciar sesión (vía caso de uso Usuario), crear, consultar, listar, actualizar y cambiar visibilidad de equipos. |
+| **Usuario operativo**    | Usuario con un rol distinto de`admin`. Existe, puede autenticarse y consultar el catálogo. | Iniciar sesión, consultar un equipo, listar equipos por empresa, listar equipos por empresa para selects.         |
+| **Consumidor de la API** | Cliente (aplicación o herramienta) que invoca los endpoints de esta spec.                    | Invocar los seis endpoints respetando el contrato de cada uno.                                                     |
 
 ---
 
@@ -60,143 +60,144 @@ Los criterios de aceptación usan notación EARS en español:
 
 ### Resumen de endpoints
 
-| Método | Ruta | Nombre del endpoint (WithName) | Caso de uso (puerto primario) | Puerto secundario (repositorio) | DTO y propiedades usadas |
-|--------|------|-------------------------------|------------------------------|--------------------------------|---------------------------|
-| POST | `/device/` | `InsertDevice` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` completo (`EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber` obligatorios; `Visibility` se fija a ENABLED) |
-| GET | `/device/{id}` | `GetDevice` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo `Id` (tomado del parámetro de ruta); **respuesta: `DeviceDTO` completo** |
-| GET | `/devicesent/{enterpriseId}` | `GetDevicesByEnterprise` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo `EnterpriseId` (tomado del parámetro de ruta, valor int); **respuesta: `IEnumerable<DeviceDTO>` con todas las propiedades incluidas `Visibility`** |
-| PUT | `/device/{id}` | `UpdateDevices` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` con `Id` tomado del parámetro de ruta y resto de propiedades (`EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber`; `Visibility` se gestiona en endpoint separado) |
-| PUT | `/devicev/{id}` | `UpdateDevicesVisibility` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` con `Id` de la ruta y `Visibility` |
-| GET | `/devicesentsct/{enterpriseId}` | `GetDevicesByEnterpriseForSelect` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo `EnterpriseId` (tomado del parámetro de ruta, valor int); **respuesta: `IEnumerable<DeviceDTO>` con `Id`, `Brand`, `SerialNumber`; filtro por `Visibility = ENABLED` pero `Visibility` no viaja en la respuesta** |
+| Método | Ruta                              | Nombre del endpoint (WithName)      | Caso de uso (puerto primario)             | Puerto secundario (repositorio)                      | DTO y propiedades usadas                                                                                                                                                                                                                                   |
+| ------- | --------------------------------- | ----------------------------------- | ----------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST    | `/device/`                      | `InsertDevice`                    | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` completo (`EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber` obligatorios; `Visibility` se fija a ENABLED)                                                                                          |
+| GET     | `/device/{id}`                  | `GetDevice`                       | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo`Id` (tomado del parámetro de ruta); **respuesta: `DeviceDTO` completo**                                                                                                                                                    |
+| GET     | `/devicesent/{enterpriseId}`    | `GetDevicesByEnterprise`          | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo`EnterpriseId` (tomado del parámetro de ruta, valor int); **respuesta: `IEnumerable<DeviceDTO>` con todas las propiedades incluidas `Visibility`**                                                                        |
+| PUT     | `/device/{id}`                  | `UpdateDevices`                   | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` con `Id` tomado del parámetro de ruta y resto de propiedades (`EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber`; `Visibility` se gestiona en endpoint separado)                                 |
+| PUT     | `/devicev/{id}`                 | `UpdateDevicesVisibility`         | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | `DeviceDTO` con `Id` de la ruta y `Visibility`                                                                                                                                                                                                       |
+| GET     | `/devicesentsct/{enterpriseId}` | `GetDevicesByEnterpriseForSelect` | `IEnterpriseChildrenService<DeviceDTO>` | `IByEnterpriseRepository<DeviceEntity, DeviceDTO>` | DTO de entrada: solo`EnterpriseId` (tomado del parámetro de ruta, valor int); **respuesta: `IEnumerable<DeviceDTO>` con `Id`, `Brand`, `SerialNumber`; filtro por `Visibility = ENABLED` pero `Visibility` no viaja en la respuesta** |
 
 ### RF-1 — Control de acceso previo a toda operación protegida
 
 Todos los endpoints de esta spec **exigen sesión válida**.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-1.1 | Cuando una petición se dirige a cualquiera de los seis endpoints, el sistema verificará primero que la petición porta una sesión válida. |
-| RF-1.2 | Si una petición no porta sesión válida o su sesión ha expirado, entonces el sistema responderá con el código `401` y no ejecutará ninguna función del endpoint. |
-| RF-1.3 | Donde exista una sesión válida, el sistema comprobará **antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **solo para los endpoints `UpdateDevices` y `UpdateDevicesVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
-| RF-1.4 | Si el rol de la sesión no es `admin` **y el endpoint es `UpdateDevices` o `UpdateDevicesVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint. |
-| RF-1.5 | Si la comparación del rol no puede realizarse por una sesión corrupta o manipulada, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint. |
-| RF-1.6 | Para los endpoints `InsertDevice`, `GetDevice` y `GetDevicesByEnterpriseForSelect`, **basta con una sesión válida (usuario autenticado)**; no se verifica el rol `admin`. |
-| RF-1.7 | El endpoint `GetDevicesByEnterprise` exige rol `admin`; los endpoints `UpdateDevices` y `UpdateDevicesVisibility` también exigen rol `admin`. |
-| RF-1.8 | Ningún endpoint de esta spec es público: todos exigen sesión válida. No existe equivalente a `login` en este caso de uso. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                                                                                                                                                           |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-1.1 | Cuando una petición se dirige a cualquiera de los seis endpoints, el sistema verificará primero que la petición porta una sesión válida.                                                                                                                                                                                                                                     |
+| RF-1.2 | Si una petición no porta sesión válida o su sesión ha expirado, entonces el sistema responderá con el código`401` y no ejecutará ninguna función del endpoint.                                                                                                                                                                                                          |
+| RF-1.3 | Donde exista una sesión válida, el sistema comprobará**antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **solo para los endpoints `UpdateDevices` y `UpdateDevicesVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
+| RF-1.4 | Si el rol de la sesión no es`admin` **y el endpoint es `UpdateDevices` o `UpdateDevicesVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint.                                                                                                                                                    |
+| RF-1.5 | Si la comparación del rol no puede realizarse por una sesión corrupta o manipulada, entonces el sistema responderá con el código`403` y no ejecutará ninguna función vital del endpoint.                                                                                                                                                                                  |
+| RF-1.6 | Para los endpoints`InsertDevice`, `GetDevice` y `GetDevicesByEnterpriseForSelect`, **basta con una sesión válida (usuario autenticado)**; no se verifica el rol `admin`.                                                                                                                                                                                          |
+| RF-1.7 | El endpoint`GetDevicesByEnterprise` exige rol `admin`; los endpoints `UpdateDevices` y `UpdateDevicesVisibility` también exigen rol `admin`.                                                                                                                                                                                                                           |
+| RF-1.8 | Ningún endpoint de esta spec es público: todos exigen sesión válida. No existe equivalente a`login` en este caso de uso.                                                                                                                                                                                                                                                    |
 
 ### RF-2 — `InsertDevice` (POST `/device/`)
 
 Registra un equipo nuevo. El caso de uso fija `Visibility = "ENABLED"` al crear.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-2.1 | Cuando un usuario autenticado invoque `POST /device/`, el sistema registrará un equipo a partir del DTO de equipo recibido. |
-| RF-2.2 | El caso de uso (`EnterpriseChildrenService`) asigna `Visibility = "ENABLED"` al nuevo registro; el valor de `Visibility` enviado en el cuerpo (si lo hay) es ignorado. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-2.1 | Cuando un usuario autenticado invoque`POST /device/`, el sistema registrará un equipo a partir del DTO de equipo recibido.                                                                                                                                                                                         |
+| RF-2.2 | El caso de uso (`EnterpriseChildrenService`) asigna `Visibility = "ENABLED"` al nuevo registro; el valor de `Visibility` enviado en el cuerpo (si lo hay) es ignorado.                                                                                                                                          |
 | RF-2.3 | Si el DTO no cumple las reglas de negocio del equipo (`EnterpriseId` > 0, `TypeId` > 0, `Brand` 2-50 chars, `Model` 5-100 chars, `SerialNumber` máx. 150 chars, `InventoryNumber` > 0), entonces el sistema responderá con el código `400` (`EntityException` → RF-8.2) y no creará el registro. |
-| RF-2.4 | Cuando el registro se complete, el sistema responderá con el código `201` y sin cuerpo; el caso de uso `AddAsyncInfo` es `void` y no produce ningún objeto de retorno. |
-| RF-2.5 | La creación no expone en la respuesta ninguna referencia al recurso creado: la respuesta se limita al código `201` y no incluye cuerpo ni cabecera `Location`. |
-| RF-2.6 | Si el motor de persistencia genera un conflicto de unicidad, el sistema responderá con el código `500` y no creará un registro duplicado. |
+| RF-2.4 | Cuando el registro se complete, el sistema responderá con el código`201` y sin cuerpo; el caso de uso `AddAsyncInfo` es `void` y no produce ningún objeto de retorno.                                                                                                                                        |
+| RF-2.5 | La creación no expone en la respuesta ninguna referencia al recurso creado: la respuesta se limita al código`201` y no incluye cuerpo ni cabecera `Location`.                                                                                                                                                   |
+| RF-2.6 | Si el motor de persistencia genera un conflicto de unicidad, el sistema responderá con el código`500` y no creará un registro duplicado.                                                                                                                                                                         |
 
 ### RF-3 — `GetDevice` (GET `/device/{id}`)
 
 Obtiene un registro de equipo. **No filtra por visibilidad**: devuelve `200` con el registro aunque su `Visibility` sea `DISABLED` (opción A, coherente con specs 001, 002, 003). El `404` queda reservado exclusivamente a identificadores inexistentes.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-3.1 | Cuando un usuario autenticado invoque `GET /device/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta. |
-| RF-3.2 | Cuando el DTO tenga asignado el `Id` del parámetro de ruta, el sistema devolverá el registro de equipo correspondiente a ese identificador (`DeviceDTO` completo con todas sus propiedades). |
-| RF-3.3 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código `404`. |
-| RF-3.4 | Si el `Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro. |
-| RF-3.5 | Si el equipo existe pero tiene `Visibility = DISABLED`, el sistema devolverá `200` con el `DeviceDTO` completo; no responderá `404`. |
+| #      | Criterio de aceptación                                                                                                                                                                           |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-3.1 | Cuando un usuario autenticado invoque`GET /device/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta.                                                  |
+| RF-3.2 | Cuando el DTO tenga asignado el`Id` del parámetro de ruta, el sistema devolverá el registro de equipo correspondiente a ese identificador (`DeviceDTO` completo con todas sus propiedades). |
+| RF-3.3 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código`404`.                                                                                       |
+| RF-3.4 | Si el`Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro.                                                |
+| RF-3.5 | Si el equipo existe pero tiene`Visibility = DISABLED`, el sistema devolverá `200` con el `DeviceDTO` completo; no responderá `404`.                                                     |
 
 ### RF-4 — `GetDevicesByEnterprise` (GET `/devicesent/{enterpriseId}`)
 
 Obtiene **todos** los registros de equipos de una empresa, **incluyendo los deshabilitados**. Esta decisión es coherente con la consulta de listado del catálogo por empresa, que no aplica filtro de visibilidad: el listado completo sirve para gobernar el catálogo de dispositivos, de ahí que exista un endpoint dedicado (`GetDevicesByEnterpriseForSelect`) con solo las habilitadas para los selects. **Solo accesible para administrador.**
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-4.1 | Cuando un administrador autenticado invoque `GET /devicesent/{enterpriseId}`, el sistema sustituye el `EnterpriseId` del `DeviceDTO` por el valor del parámetro de ruta (valor int). |
-| RF-4.2 | Cuando el DTO tenga asignado el `EnterpriseId` del parámetro de ruta, el sistema devolverá el conjunto de **todos** los registros de equipos de esa empresa, independientemente de su `Visibility`. |
-| RF-4.3 | El conjunto devuelto **incluirá** registros con `Visibility = DISABLED`, con independencia de su estado de visibilidad en el almacenamiento. |
-| RF-4.4 | Si no existe ningún equipo registrado para esa empresa, entonces el sistema devolverá un conjunto vacío con el código `200`. |
-| RF-4.5 | La respuesta contiene todas las propiedades del `DeviceDTO` incluyendo `Visibility`. |
-| RF-4.6 | Si el `enterpriseId` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro. |
-| RF-4.7 | Si la sesión no tiene rol `admin`, entonces el sistema responderá con el código `403` y no ejecutará ninguna función del endpoint. |
+| #      | Criterio de aceptación                                                                                                                                                                                        |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-4.1 | Cuando un administrador autenticado invoque`GET /devicesent/{enterpriseId}`, el sistema sustituye el `EnterpriseId` del `DeviceDTO` por el valor del parámetro de ruta (valor int).                     |
+| RF-4.2 | Cuando el DTO tenga asignado el`EnterpriseId` del parámetro de ruta, el sistema devolverá el conjunto de **todos** los registros de equipos de esa empresa, independientemente de su `Visibility`. |
+| RF-4.3 | El conjunto devuelto**incluirá** registros con `Visibility = DISABLED`, con independencia de su estado de visibilidad en el almacenamiento.                                                           |
+| RF-4.4 | Si no existe ningún equipo registrado para esa empresa, entonces el sistema devolverá un conjunto vacío con el código`200`.                                                                              |
+| RF-4.5 | La respuesta contiene todas las propiedades del`DeviceDTO` incluyendo `Visibility`.                                                                                                                        |
+| RF-4.6 | Si el`enterpriseId` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro.                                                   |
+| RF-4.7 | Si la sesión no tiene rol`admin`, entonces el sistema responderá con el código `403` y no ejecutará ninguna función del endpoint.                                                                     |
 
 ### RF-5 — `UpdateDevices` (PUT `/device/{id}`)
 
 Actualiza un equipo. Solo accesible para administrador.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-5.1 | Cuando un administrador autenticado invoque `PUT /device/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta, con independencia del `Id` que venga en el cuerpo de la petición. |
-| RF-5.2 | Cuando el DTO tenga asignado el `Id` del parámetro de ruta, el sistema actualizará el equipo correspondiente a ese identificador con los datos del DTO (propiedades `EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber`; `Visibility` se gestiona en endpoint separado). |
-| RF-5.3 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código `404` y no realizará ninguna modificación. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                                                                                                            |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-5.1 | Cuando un administrador autenticado invoque`PUT /device/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta, con independencia del `Id` que venga en el cuerpo de la petición.                                                                                                        |
+| RF-5.2 | Cuando el DTO tenga asignado el`Id` del parámetro de ruta, el sistema actualizará el equipo correspondiente a ese identificador con los datos del DTO (propiedades `EnterpriseId`, `TypeId`, `Brand`, `Model`, `SerialNumber`, `InventoryNumber`; `Visibility` se gestiona en endpoint separado).                |
+| RF-5.3 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código`404` y no realizará ninguna modificación.                                                                                                                                                                                  |
 | RF-5.4 | Si el DTO no cumple las reglas de negocio del equipo (`EnterpriseId` > 0, `TypeId` > 0, `Brand` 2-50 chars, `Model` 5-100 chars, `SerialNumber` máx. 150 chars, `InventoryNumber` > 0), entonces el sistema responderá con el código `400` (`EntityException` → RF-8.2) y no realizará ninguna modificación. |
-| RF-5.5 | Cuando la actualización se complete, el sistema responderá con el código `204` y sin cuerpo: la operación de actualización (vía `EnterpriseChildrenService.UpdateAsyncChild`) no produce ningún objeto de retorno. |
-| RF-5.6 | Si el `Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no realizará ninguna modificación. |
+| RF-5.5 | Cuando la actualización se complete, el sistema responderá con el código`204` y sin cuerpo: la operación de actualización (vía `EnterpriseChildrenService.UpdateAsyncChild`) no produce ningún objeto de retorno.                                                                                                       |
+| RF-5.6 | Si el`Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no realizará ninguna modificación.                                                                                                                                                                             |
 
 ### RF-6 — `UpdateDevicesVisibility` (PUT `/devicev/{id}`)
 
 Actualiza **únicamente** el campo `Visibility` de un equipo. Solo accesible para administrador.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-6.1 | Cuando un administrador autenticado invoque `PUT /devicev/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta. |
-| RF-6.2 | Cuando el endpoint actualice el campo `Visibility`, el sistema tomará del DTO **únicamente** las propiedades `Id` y `Visibility`; cualquier otra propiedad del DTO será ignorada. |
-| RF-6.3 | Si el valor recibido en `Visibility` no es uno de los admitidos por las reglas de negocio (`ENABLED` o `DISABLED`), entonces el sistema responderá con el código `400` y no realizará ninguna modificación. |
-| RF-6.4 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código `404` y no realizará ninguna modificación. |
-| RF-6.5 | Cuando la modificación se complete, el sistema responderá con el código `204` y sin cuerpo: la operación de actualización de visibilidad (vía `EnterpriseChildrenService.UpdateAsyncVisibility`) no produce ningún objeto de retorno. |
-| RF-6.6 | Si el `Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no realizará ninguna modificación. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-6.1 | Cuando un administrador autenticado invoque`PUT /devicev/{id}`, el sistema sustituye el `Id` del `DeviceDTO` por el valor del parámetro de ruta.                                                                                         |
+| RF-6.2 | Cuando el endpoint actualice el campo`Visibility`, el sistema tomará del DTO **únicamente** las propiedades `Id` y `Visibility`; cualquier otra propiedad del DTO será ignorada.                                                 |
+| RF-6.3 | Si el valor recibido en`Visibility` no es uno de los admitidos por las reglas de negocio (`ENABLED` o `DISABLED`), entonces el sistema responderá con el código `400` y no realizará ninguna modificación.                          |
+| RF-6.4 | Si el identificador no corresponde a ningún equipo, entonces el sistema responderá con el código`404` y no realizará ninguna modificación.                                                                                               |
+| RF-6.5 | Cuando la modificación se complete, el sistema responderá con el código`204` y sin cuerpo: la operación de actualización de visibilidad (vía `EnterpriseChildrenService.UpdateAsyncVisibility`) no produce ningún objeto de retorno. |
+| RF-6.6 | Si el`Id` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no realizará ninguna modificación.                                                                                          |
 
 ### RF-7 — `GetDevicesByEnterpriseForSelect` (GET `/devicesentsct/{enterpriseId}`)
 
 Obtiene los registros de equipos **habilitados únicamente** (`Visibility = ENABLED`) de una empresa, filtra por `Visibility = "ENABLED"` y devuelve `Id`, `Brand`, `SerialNumber`.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-7.1 | Cuando un usuario autenticado invoque `GET /devicesentsct/{enterpriseId}`, el sistema sustituye el `EnterpriseId` del `DeviceDTO` por el valor del parámetro de ruta (valor int). |
-| RF-7.2 | Cuando el DTO tenga asignado el `EnterpriseId` del parámetro de ruta, el sistema devolverá el conjunto de registros de equipos de esa empresa con `Visibility = ENABLED`. |
-| RF-7.3 | El conjunto devuelto **no incluirá** ningún registro con `Visibility = DISABLED`, con independencia de su existencia en el almacenamiento. |
-| RF-7.4 | Si no existe ningún equipo habilitado registrado para esa empresa, entonces el sistema devolverá un conjunto vacío con el código `200`. |
-| RF-7.5 | La respuesta contiene únicamente `Id`, `Brand` y `SerialNumber` por cada equipo. El filtro `Visibility = ENABLED` se aplica en la consulta, pero el campo `Visibility` **no** se incluye en la respuesta. Las propiedades no incluidas en este listado llegarán como `null` en el DTO y el consumidor no debe asumir que están presentes. |
-| RF-7.6 | Si el `enterpriseId` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-7.1 | Cuando un usuario autenticado invoque`GET /devicesentsct/{enterpriseId}`, el sistema sustituye el `EnterpriseId` del `DeviceDTO` por el valor del parámetro de ruta (valor int).                                                                                                                                                                       |
+| RF-7.2 | Cuando el DTO tenga asignado el`EnterpriseId` del parámetro de ruta, el sistema devolverá el conjunto de registros de equipos de esa empresa con `Visibility = ENABLED`.                                                                                                                                                                                |
+| RF-7.3 | El conjunto devuelto**no incluirá** ningún registro con `Visibility = DISABLED`, con independencia de su existencia en el almacenamiento.                                                                                                                                                                                                           |
+| RF-7.4 | Si no existe ningún equipo habilitado registrado para esa empresa, entonces el sistema devolverá un conjunto vacío con el código`200`.                                                                                                                                                                                                                  |
+| RF-7.5 | La respuesta contiene únicamente`Id`, `Brand` y `SerialNumber` por cada equipo. El filtro `Visibility = ENABLED` se aplica en la consulta, pero el campo `Visibility` **no** se incluye en la respuesta. Las propiedades no incluidas en este listado llegarán como `null` en el DTO y el consumidor no debe asumir que están presentes. |
+| RF-7.6 | Si el`enterpriseId` de la ruta no es un valor numérico válido, entonces el sistema responderá con el código `400` y no consultará ningún registro.                                                                                                                                                                                                  |
 
 ### RF-8 — Contrato de errores
 
 Todo fallo de negocio producido por un caso de uso se traduce a un código HTTP y a un mensaje al usuario final.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-8.1 | Si un caso de uso falla por registro no encontrado (`KeyNotFoundException` del repositorio), entonces el sistema responderá con el código `404`. |
-| RF-8.2 | Si un caso de uso falla por una violación de reglas de negocio de la entidad (`EntityException`), entonces el sistema responderá con el código `400`. |
+| #      | Criterio de aceptación                                                                                                                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-8.1 | Si un caso de uso falla por registro no encontrado (`KeyNotFoundException` del repositorio), entonces el sistema responderá con el código `404`.                                                              |
+| RF-8.2 | Si un caso de uso falla por una violación de reglas de negocio de la entidad (`EntityException`), entonces el sistema responderá con el código `400`.                                                        |
 | RF-8.3 | Si un caso de uso falla por una violación de reglas de negocio de la aplicación (`ApplicationException`, p. ej. `Visibility` inválido o `Id` < 1), entonces el sistema responderá con el código `400`. |
-| RF-8.4 | Si un caso de uso falla por cualquier otra causa de negocio, entonces el sistema responderá con el código `400`. |
-| RF-8.5 | Si un caso de uso falla por un conflicto de unicidad emitido por el motor de persistencia, entonces el sistema responderá con el código `500`. |
-| RF-8.6 | Donde la API produzca un mensaje de error, el mensaje será redactado en español. |
+| RF-8.4 | Si un caso de uso falla por cualquier otra causa de negocio, entonces el sistema responderá con el código`400`.                                                                                                 |
+| RF-8.5 | Si un caso de uso falla por un conflicto de unicidad emitido por el motor de persistencia, entonces el sistema responderá con el código`500`.                                                                   |
+| RF-8.6 | Donde la API produzca un mensaje de error, el mensaje será redactado en español.                                                                                                                                  |
 
 ### RF-9 — Documentación del contrato (OpenAPI / Swagger)
 
 Los seis endpoints deben exponer su contrato de respuestas documentado y su nombre público.
 
-| # | Criterio de aceptación |
-|---|------------------------|
-| RF-9.1 | Cada endpoint usará `WithName(...)` con **exactamente** el nombre indicado en la tabla de la sección "Resumen de endpoints" (`InsertDevice`, `GetDevice`, `GetDevicesByEnterprise`, `UpdateDevices`, `UpdateDevicesVisibility`, `GetDevicesByEnterpriseForSelect`). |
-| RF-9.2 | Cada endpoint usará `Produces(...)` para documentar **cada** código de respuesta que pueda emitir según sus RF. La tabla siguiente lista los códigos **exactos** que cada endpoint debe documentar, deducidos de RF-1 a RF-8. |
-| RF-9.3 | Los nombres y códigos documentados coincidirán con los definidos en los RF-2 a RF-7 y RF-1. |
+| #      | Criterio de aceptación                                                                                                                                                                                                                                                                  |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-9.1 | Cada endpoint usará`WithName(...)` con **exactamente** el nombre indicado en la tabla de la sección "Resumen de endpoints" (`InsertDevice`, `GetDevice`, `GetDevicesByEnterprise`, `UpdateDevices`, `UpdateDevicesVisibility`, `GetDevicesByEnterpriseForSelect`). |
+| RF-9.2 | Cada endpoint usará`Produces(...)` para documentar **cada** código de respuesta que pueda emitir según sus RF. La tabla siguiente lista los códigos **exactos** que cada endpoint debe documentar, deducidos de RF-1 a RF-8.                                           |
+| RF-9.3 | Los nombres y códigos documentados coincidirán con los definidos en los RF-2 a RF-7 y RF-1.                                                                                                                                                                                            |
 
 #### Tabla de códigos `Produces(...)` por endpoint (verificable)
 
-| Endpoint | WithName(...) | Códigos Produces(...) |
-|----------|---------------|----------------------|
-| `InsertDevice` | `InsertDevice` | `201`, `400`, `401`, `500` |
-| `GetDevice` | `GetDevice` | `200`, `400`, `401`, `404` |
-| `GetDevicesByEnterprise` | `GetDevicesByEnterprise` | `200`, `400`, `401`, `403` |
-| `UpdateDevices` | `UpdateDevices` | `204`, `400`, `401`, `403`, `404` |
-| `UpdateDevicesVisibility` | `UpdateDevicesVisibility` | `204`, `400`, `401`, `403`, `404` |
-| `GetDevicesByEnterpriseForSelect` | `GetDevicesByEnterpriseForSelect` | `200`, `400`, `401` |
+| Endpoint                            | WithName(...)                       | Códigos Produces(...)                      |
+| ----------------------------------- | ----------------------------------- | ------------------------------------------- |
+| `InsertDevice`                    | `InsertDevice`                    | `201`, `400`, `401`, `500`          |
+| `GetDevice`                       | `GetDevice`                       | `200`, `400`, `401`, `404`          |
+| `GetDevicesByEnterprise`          | `GetDevicesByEnterprise`          | `200`, `400`, `401`, `403`          |
+| `UpdateDevices`                   | `UpdateDevices`                   | `204`, `400`, `401`, `403`, `404` |
+| `UpdateDevicesVisibility`         | `UpdateDevicesVisibility`         | `204`, `400`, `401`, `403`, `404` |
+| `GetDevicesByEnterpriseForSelect` | `GetDevicesByEnterpriseForSelect` | `200`, `400`, `401`                   |
 
 **Derivación:**
+
 - `201/204/200` son los códigos de éxito de RF-2.4, RF-5.5, RF-6.5, RF-3.2, RF-4.2, RF-7.2.
 - `401` aplica a **todos** por RF-1.2.
 - `403` aplica a `GetDevicesByEnterprise`, `UpdateDevices` y `UpdateDevicesVisibility` por RF-1.7 y RF-4.7.
@@ -208,42 +209,42 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 
 ## 5. Requisitos no funcionales
 
-| # | Requisito | Criterio de aceptación |
-|---|-----------|------------------------|
-| RNF-1 | Esquema por capas | La especificación respeta la separación entre dominio, aplicación, datos y repositorio establecida en `docs/constitution.md`. |
-| RNF-2 | Puertos y adaptadores | Los casos de uso se comunican con la persistencia únicamente a través de los puertos de la capa de aplicación; ningún caso de uso accede directamente al mecanismo de almacenamiento. |
-| RNF-3 | Inyección de dependencias | Los componentes se registran con ámbito de vida por petición (`scoped`). |
-| RNF-4 | Plataforma | El sistema opera sobre .NET 10.0 usando únicamente biblioteca estándar. |
-| RNF-5 | Persistencia | La persistencia de equipos se realiza mediante Entity Framework Core. |
-| RNF-6 | Idioma | Los identificadores y los comentarios del código están en inglés; los mensajes destinados al usuario final están en español. |
-| RNF-7 | Consistencia de datos | Cuando una operación de escritura se complete, el estado almacenado debe corresponder a los datos enviados por el consumidor de la API. |
-| RNF-8 | Ausencia de filtración de secretos | Ninguna respuesta de la API debe exponer datos sensibles. |
-| RNF-9 | Compatibilidad | El contrato de los seis endpoints no cambia de forma incompatible dentro de este caso de uso. |
-| RNF-10 | Sin dependencias nuevas | No se añade ningún paquete NuGet fuera de los ya autorizados en la spec 001 (solo `Microsoft.AspNetCore.Authentication.JwtBearer` y EF Core). |
+| #      | Requisito                           | Criterio de aceptación                                                                                                                                                                   |
+| ------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RNF-1  | Esquema por capas                   | La especificación respeta la separación entre dominio, aplicación, datos y repositorio establecida en`docs/constitution.md`.                                                         |
+| RNF-2  | Puertos y adaptadores               | Los casos de uso se comunican con la persistencia únicamente a través de los puertos de la capa de aplicación; ningún caso de uso accede directamente al mecanismo de almacenamiento. |
+| RNF-3  | Inyección de dependencias          | Los componentes se registran con ámbito de vida por petición (`scoped`).                                                                                                              |
+| RNF-4  | Plataforma                          | El sistema opera sobre .NET 10.0 usando únicamente biblioteca estándar.                                                                                                                 |
+| RNF-5  | Persistencia                        | La persistencia de equipos se realiza mediante Entity Framework Core.                                                                                                                     |
+| RNF-6  | Idioma                              | Los identificadores y los comentarios del código están en inglés; los mensajes destinados al usuario final están en español.                                                         |
+| RNF-7  | Consistencia de datos               | Cuando una operación de escritura se complete, el estado almacenado debe corresponder a los datos enviados por el consumidor de la API.                                                  |
+| RNF-8  | Ausencia de filtración de secretos | Ninguna respuesta de la API debe exponer datos sensibles.                                                                                                                                 |
+| RNF-9  | Compatibilidad                      | El contrato de los seis endpoints no cambia de forma incompatible dentro de este caso de uso.                                                                                             |
+| RNF-10 | Sin dependencias nuevas             | No se añade ningún paquete NuGet fuera de los ya autorizados en la spec 001 (solo`Microsoft.AspNetCore.Authentication.JwtBearer` y EF Core).                                          |
 
 ---
 
 ## 6. Casos límite
 
-| # | Situación | Comportamiento esperado |
-|---|-----------|------------------------|
-| CE-1 | El `Id` del cuerpo de `PUT /device/{id}` o `PUT /devicev/{id}` difiere del `Id` de la ruta. | Prevalece siempre el `Id` de la ruta. |
-| CE-2 | `PUT /devicev/{id}` incluye propiedades ajenas a `Id` y `Visibility` (p. ej. `Brand`, `Model`). | Esas propiedades se ignoran y no producen efecto sobre el equipo. |
-| CE-3 | Se solicita un equipo inexistente (`GetDevice`, `UpdateDevices`, `UpdateDevicesVisibility`). | `404`. |
-| CE-4 | Se intenta crear un equipo cuyo índice único provoque conflicto en el motor de persistencia. | `500` y no se duplica el registro. |
-| CE-5 | Se intenta actualizar un equipo inexistente. | `404` y no se realiza ninguna modificación. |
-| CE-6 | Se solicitan equipos de una empresa y no hay ninguno registrado. | `200` con conjunto vacío. |
-| CE-6b | Existe al menos un equipo deshabilitado y se invoca `GET /devicesent/{enterpriseId}`. | El conjunto devuelto **incluye** el registro con `Visibility = DISABLED` (RF-4.3). |
-| CE-6c | Existe al menos un equipo deshabilitado y se invoca `GET /devicesentsct/{enterpriseId}`. | El conjunto devuelto **no incluye** el registro con `Visibility = DISABLED` (RF-7.3). |
-| CE-7 | Se invocan los seis endpoints sin sesión o con sesión expirada. | `401` y no se ejecuta ninguna función del endpoint. |
-| CE-8 | Se invocan `GetDevicesByEnterprise`, `UpdateDevices` o `UpdateDevicesVisibility` con una sesión de rol distinto de `admin`. | `403` y no se ejecuta ninguna función del endpoint. |
-| CE-9 | Se invocan `GetDevicesByEnterprise`, `UpdateDevices` o `UpdateDevicesVisibility` con rol `admin`, pero la sesión está manipulada. | `403`. |
-| CE-10 | `GetDevice` devuelve un equipo con `Visibility = DISABLED`. | `200` con el equipo (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
-| CE-11 | El DTO de `InsertDevice` o `UpdateDevices` viola una regla de negocio (longitudes de campos, IDs > 0). | `400` y no se escribe ningún dato. |
-| CE-12 | El DTO de `UpdateDevicesVisibility` envía `Visibility` distinto de `ENABLED` o `DISABLED`. | `400` y no se realiza ninguna modificación. |
-| CE-13 | Cualquiera de las rutas recibe un `Id` o `enterpriseId` no numérico. | `400` y no se ejecuta ninguna función del endpoint. |
-| CE-14 | La sesión del consumidor ha vencido su vigencia (30 min desde emisión, sin renovación). | `401` en los seis endpoints. |
-| CE-15 | Se emite un error en cualquiera de los seis endpoints. | El mensaje al usuario se entrega en español. |
+| #     | Situación                                                                                                                                 | Comportamiento esperado                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| CE-1  | El`Id` del cuerpo de `PUT /device/{id}` o `PUT /devicev/{id}` difiere del `Id` de la ruta.                                         | Prevalece siempre el`Id` de la ruta.                                                                         |
+| CE-2  | `PUT /devicev/{id}` incluye propiedades ajenas a `Id` y `Visibility` (p. ej. `Brand`, `Model`).                                  | Esas propiedades se ignoran y no producen efecto sobre el equipo.                                              |
+| CE-3  | Se solicita un equipo inexistente (`GetDevice`, `UpdateDevices`, `UpdateDevicesVisibility`).                                         | `404`.                                                                                                       |
+| CE-4  | Se intenta crear un equipo cuyo índice único provoque conflicto en el motor de persistencia.                                             | `500` y no se duplica el registro.                                                                           |
+| CE-5  | Se intenta actualizar un equipo inexistente.                                                                                               | `404` y no se realiza ninguna modificación.                                                                 |
+| CE-6  | Se solicitan equipos de una empresa y no hay ninguno registrado.                                                                           | `200` con conjunto vacío.                                                                                   |
+| CE-6b | Existe al menos un equipo deshabilitado y se invoca`GET /devicesent/{enterpriseId}`.                                                     | El conjunto devuelto**incluye** el registro con `Visibility = DISABLED` (RF-4.3).                      |
+| CE-6c | Existe al menos un equipo deshabilitado y se invoca`GET /devicesentsct/{enterpriseId}`.                                                  | El conjunto devuelto**no incluye** el registro con `Visibility = DISABLED` (RF-7.3).                   |
+| CE-7  | Se invocan los seis endpoints sin sesión o con sesión expirada.                                                                          | `401` y no se ejecuta ninguna función del endpoint.                                                         |
+| CE-8  | Se invocan`GetDevicesByEnterprise`, `UpdateDevices` o `UpdateDevicesVisibility` con una sesión de rol distinto de `admin`.        | `403` y no se ejecuta ninguna función del endpoint.                                                         |
+| CE-9  | Se invocan`GetDevicesByEnterprise`, `UpdateDevices` o `UpdateDevicesVisibility` con rol `admin`, pero la sesión está manipulada. | `403`.                                                                                                       |
+| CE-10 | `GetDevice` devuelve un equipo con `Visibility = DISABLED`.                                                                            | `200` con el equipo (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
+| CE-11 | El DTO de`InsertDevice` o `UpdateDevices` viola una regla de negocio (longitudes de campos, IDs > 0).                                  | `400` y no se escribe ningún dato.                                                                          |
+| CE-12 | El DTO de`UpdateDevicesVisibility` envía `Visibility` distinto de `ENABLED` o `DISABLED`.                                         | `400` y no se realiza ninguna modificación.                                                                 |
+| CE-13 | Cualquiera de las rutas recibe un`Id` o `enterpriseId` no numérico.                                                                   | `400` y no se ejecuta ninguna función del endpoint.                                                         |
+| CE-14 | La sesión del consumidor ha vencido su vigencia (30 min desde emisión, sin renovación).                                                 | `401` en los seis endpoints.                                                                                 |
+| CE-15 | Se emite un error en cualquiera de los seis endpoints.                                                                                     | El mensaje al usuario se entrega en español.                                                                  |
 
 ---
 
