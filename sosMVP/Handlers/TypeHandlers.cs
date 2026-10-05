@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using HexArch.Application.Abstractions.PrimaryPorts;
 using HexArch.Application.DTOs;
 using Microsoft.AspNetCore.Http;
+using SosMVP.Security;
 
 namespace SosMVP.Handlers;
 
@@ -25,8 +27,19 @@ public static class TypeHandlers
         return Results.Ok(type);
     }
 
-    public static async Task<IResult> GetTypesAsync(ICommonService<TypeDTO> commonService)
+    public static async Task<IResult> GetTypesAsync(ICommonService<TypeDTO> commonService, ClaimsPrincipal principal)
     {
+        // The complete listing governs the catalogue, so it is reserved for administrators: the role
+        // is read from the claims of the session and any role other than "admin" — including a
+        // missing or corrupted one — ends in 403 before the use case runs, so no record is read and
+        // no visibility is consulted (RF-4.1, RF-4.4, RF-1.5, CE-8).
+        if (AdminAuthorization.ReadRoleClaim(principal) != AdminAuthorization.AdminRole)
+        {
+            return Results.Text(
+                "Solo un administrador puede consultar el catálogo de tipos.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
         // The listing takes no dto nor parameter: it goes straight through the read-all port of the
         // use case, whose repository does not filter by visibility.
         var types = await commonService.GetAsyncAllInfo();

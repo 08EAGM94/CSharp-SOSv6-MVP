@@ -9,8 +9,8 @@ namespace test;
 
 /// <summary>
 /// Subject: <c>TypeHandlers.GetTypesAsync</c> with a fake <c>ICommonService&lt;TypeDTO&gt;</c>.
-/// Covers the three cases the plan asks for: happy path, boundary case and error case
-/// (RF-4.1 to RF-4.3, RF-8.4, CE-6, CE-6b).
+/// Covers the four cases the plan asks for: happy path, boundary cases (empty collection and
+/// session without the admin role) and error case (RF-4.1 to RF-4.4, RF-8.4, CE-6, CE-6b, CE-8).
 /// </summary>
 public class TypeHandlersGetTypesTests
 {
@@ -38,7 +38,7 @@ public class TypeHandlersGetTypesTests
             ]
         };
 
-        var result = await TypeHandlers.GetTypesAsync(commonService);
+        var result = await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession());
 
         var response = await TestHttp.ExecuteAsync(result);
 
@@ -72,7 +72,7 @@ public class TypeHandlersGetTypesTests
             ]
         };
 
-        var result = await TypeHandlers.GetTypesAsync(commonService);
+        var result = await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession());
 
         var response = await TestHttp.ExecuteAsync(result);
 
@@ -103,7 +103,7 @@ public class TypeHandlersGetTypesTests
             ]
         };
 
-        var result = await TypeHandlers.GetTypesAsync(commonService);
+        var result = await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession());
 
         var response = await TestHttp.ExecuteAsync(result);
 
@@ -121,7 +121,7 @@ public class TypeHandlersGetTypesTests
         // collection, never 404.
         var commonService = new FakeTypeCommonService { AllResult = [] };
 
-        var result = await TypeHandlers.GetTypesAsync(commonService);
+        var result = await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession());
 
         var response = await TestHttp.ExecuteAsync(result);
 
@@ -141,7 +141,7 @@ public class TypeHandlersGetTypesTests
             AllResult = [StoredType(1, "Herramientas especiales", "DISABLED")]
         };
 
-        await TypeHandlers.GetTypesAsync(commonService);
+        await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession());
 
         Assert.Equal(1, commonService.GetAsyncAllInfoCalls);
         Assert.Equal(0, commonService.AddAsyncInfoCalls);
@@ -149,6 +149,35 @@ public class TypeHandlersGetTypesTests
         Assert.Equal(0, commonService.UpdateAsyncInfoCalls);
         Assert.Equal(0, commonService.UpdateAsyncVisibilityCalls);
         Assert.Null(commonService.LastRequestedDto);
+    }
+
+    [Theory]
+    [InlineData("user")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task SessionWithoutTheAdminRole_IsAnsweredWithForbiddenAndDoesNotReachTheUseCase(string? role)
+    {
+        // Boundary case (RF-4.4, CE-8, RF-1.5): governing the catalogue means reading the whole
+        // listing, so a session whose role claim is not "admin" — including a missing or corrupted
+        // one — is answered with 403 and the use case is never invoked: no record is read and no
+        // visibility is consulted.
+        var commonService = new FakeTypeCommonService
+        {
+            AllResult = [StoredType(1, "Herramientas especiales", "ENABLED")]
+        };
+
+        var result = await TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession(role: role));
+
+        var response = await TestHttp.ExecuteAsync(result);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, response.StatusCode);
+        Assert.Equal(0, commonService.GetAsyncAllInfoCalls);
+        Assert.Equal(0, commonService.AddAsyncInfoCalls);
+        Assert.Equal(0, commonService.GetAsyncInfoCalls);
+        Assert.Equal(0, commonService.UpdateAsyncInfoCalls);
+        Assert.Equal(0, commonService.UpdateAsyncVisibilityCalls);
+
+        await HandlerTestSupport.AssertBodyIsInSpanishAsync(result);
     }
 
     [Fact]
@@ -162,7 +191,7 @@ public class TypeHandlersGetTypesTests
         };
 
         await HandlerTestSupport.AssertTranslationAsync<InvalidOperationException>(
-            () => TypeHandlers.GetTypesAsync(commonService),
+            () => TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession()),
             StatusCodes.Status400BadRequest);
 
         Assert.Equal(1, commonService.GetAsyncAllInfoCalls);
@@ -178,7 +207,7 @@ public class TypeHandlersGetTypesTests
         };
 
         var exception = await Assert.ThrowsAnyAsync<InvalidOperationException>(
-            () => TypeHandlers.GetTypesAsync(commonService));
+            () => TypeHandlers.GetTypesAsync(commonService, HandlerTestSupport.CreateSession()));
         var response = await TestHttp.TranslateAsync(exception);
 
         Assert.Equal(StatusCodes.Status400BadRequest, response.StatusCode);

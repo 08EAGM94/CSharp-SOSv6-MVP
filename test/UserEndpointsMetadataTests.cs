@@ -194,10 +194,11 @@ public class UserEndpointsMetadataTests
     [InlineData(nameof(UserHandlers.UpdateUserVisibilityAsync))]
     public void RoutesWithIdentifier_ReceiveItAsAnIntegerSoANonNumericValueIsRejected(string handlerName)
     {
-        var identifier = Assert.Single(typeof(UserHandlers)
-            .GetMethod(handlerName)!
-            .GetParameters()
-            .Where(parameter => parameter.Name == "id"));
+        var identifier = Assert.Single(
+            typeof(UserHandlers)
+                .GetMethod(handlerName)!
+                .GetParameters(),
+            parameter => parameter.Name == "id");
 
         Assert.Equal(typeof(int), identifier.ParameterType);
     }

@@ -130,7 +130,7 @@ public class EnterpriseEndpointsMetadataTests
     {
         // The listing only answers 200, including the empty collection, and 401 without a session:
         // it filters nothing and never fails (RF-4, CE-6, CE-6b).
-        AssertContract(HttpMethods.Get, "/enterprises/", "GetEnterprises", [200, 401]);
+        AssertContract(HttpMethods.Get, "/enterprises/", "GetEnterprises", [200, 401, 403]);
     }
 
     [Fact]

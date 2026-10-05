@@ -84,8 +84,8 @@ Dos grupos con políticas distintas, usando `RequireAuthorization` / `AdminAutho
 
 | Grupo                 | Endpoints                                                         | Política                                                    | Qué verifica                                                                                                 |
 | --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| **Autenticado** | `InsertType`, `GetType`, `GetTypes`, `GetTypesForSelects` | `[Authorize]` (solo autenticación válida, cualquier rol) | Sesión válida →`401` si no hay o vencida (RF-1.1, RF-1.2). **No verifica rol `admin`** (RF-1.6). |
-| **Admin**       | `UpdateType`, `UpdateTypeVisibility`                          | `RequireAuthorization(AdminAuthorization.PolicyName)`      | Sesión válida**y** claim `Role = "admin"` → `403` si no (RF-1.3, RF-1.4, RF-1.5).                |
+| **Autenticado** | `InsertType`, `GetType`, `GetTypesForSelects` | `[Authorize]` (solo autenticación válida, cualquier rol) | Sesión válida →`401` si no hay o vencida (RF-1.1, RF-1.2). **No verifica rol `admin`** (RF-1.6). |
+| **Admin**       | `GetTypes`, `UpdateType`, `UpdateTypeVisibility`                          | `RequireAuthorization(AdminAuthorization.PolicyName)`      | Sesión válida**y** claim `Role = "admin"` → `403` si no (RF-1.3, RF-1.4, RF-1.5).                |
 
 **Por qué** (decisión técnica, alternativa descartada): el middleware de ASP.NET Core ya impone el orden "autenticación primero, autorización después" (`UseAuthentication()` antes de `UseAuthorization()`). Un filtro propio (`IEndpointFilter`) obligaría a replicar a mano la distinción `401`/`403` que la spec hace explícita. Se descarta porque añade código sin valor y rompe la coherencia con `UserEndpointsExtensions`.
 
@@ -121,7 +121,7 @@ Todos los registros son `scoped`, cumpliendo el principio 3. No hay un solo `new
 | ------------------- | --------------------------------------------------------------- | ---------------------------------- | ---------------------------------- |
 | `POST /type/`     | `ICommonService<TypeDTO>.AddAsyncInfo(dto)`                   | `201` sin cuerpo ni `Location` | RF-2.1 a RF-2.6, CE-4              |
 | `GET /type/{id}`  | `GetAsyncInfo(dto con Id de ruta)`                            | `200` con `TypeDTO`            | RF-3.1 a RF-3.5, CE-1, CE-3, CE-10 |
-| `GET /type/`      | `GetAsyncAllInfo()`                                           | `200` con colección             | RF-4.1 a RF-4.3, CE-6, CE-6b       |
+| `GET /type/`      | `GetAsyncAllInfo()`                                           | `200` con colección             | RF-4.1 a RF-4.4, CE-6, CE-6b       |
 | `PUT /type/{id}`  | `UpdateAsyncInfo(dto con Id de ruta)`                         | `204` sin cuerpo                 | RF-5.1 a RF-5.6, CE-1, CE-5        |
 | `PUT /typev/{id}` | `UpdateAsyncVisibility(dto con Id de ruta y solo Visibility)` | `204` sin cuerpo                 | RF-6.1 a RF-6.6, CE-1, CE-2        |
 | `GET /typesct/`   | `ISelectService<TypeDTO>.GetAsyncInfoForSelects()`            | `200` con colección             | RF-7.1 a RF-7.3, CE-6, CE-6c       |
@@ -145,7 +145,7 @@ Reglas transversales dentro de los delegados:
 | ------------------------ | ------------------------ | ------------------------------------------- |
 | `InsertType`           | `InsertType`           | `201`, `400`, `401`, `500`          |
 | `GetType`              | `GetType`              | `200`, `400`, `401`, `404`          |
-| `GetTypes`             | `GetTypes`             | `200`, `401`                            |
+| `GetTypes`             | `GetTypes`             | `200`, `401`, `403`                   |
 | `UpdateType`           | `UpdateType`           | `204`, `400`, `401`, `403`, `404` |
 | `UpdateTypeVisibility` | `UpdateTypeVisibility` | `204`, `400`, `401`, `403`, `404` |
 | `GetTypesForSelects`   | `GetTypesForSelects`   | `200`, `401`                            |
@@ -203,7 +203,7 @@ Reglas de uso (idénticas a spec 001, secciones 4.6.2 y 4.6.3):
 | ----------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `TypeHandlersInsertTypeTests`           | `TypeHandlers.InsertTypeAsync` con `ICommonService<TypeDTO>` falso | RF-2.1 a RF-2.6, CE-4, CE-11 (feliz + límite + error)                              |
 | `TypeHandlersGetTypeTests`              | `TypeHandlers.GetTypeAsync`                                          | RF-3.1 a RF-3.5, CE-1, CE-3, CE-10, CE-13 (feliz + límite + error)                 |
-| `TypeHandlersGetTypesTests`             | `TypeHandlers.GetTypesAsync`                                         | RF-4.1 a RF-4.3, CE-6, CE-6b (feliz + límite + error)                              |
+| `TypeHandlersGetTypesTests`             | `TypeHandlers.GetTypesAsync`                                         | RF-4.1 a RF-4.4, CE-6, CE-6b (feliz + límite + error)                              |
 | `TypeHandlersUpdateTypeTests`           | `TypeHandlers.UpdateTypeAsync`                                       | RF-5.1 a RF-5.6, CE-1, CE-5, CE-11 (feliz + límite + error)                        |
 | `TypeHandlersUpdateTypeVisibilityTests` | `TypeHandlers.UpdateTypeVisibilityAsync`                             | RF-6.1 a RF-6.6, CE-1, CE-2, CE-12 (feliz + límite + error)                        |
 | `TypeHandlersGetTypesForSelectsTests`   | `TypeHandlers.GetTypesForSelectsAsync`                               | RF-7.1 a RF-7.3, CE-6, CE-6c (feliz + límite + error)                              |
@@ -227,6 +227,7 @@ Cada endpoint necesita **mínimo tres pruebas**: camino feliz, caso límite, cas
 
   - **Feliz:** Tipos registrados → `200` con colección que incluye `DISABLED`.
   - **Límite:** Sin tipos → `200` con `[]`.
+  - **Límite:** Usuario no admin → `403` (RF-4.4).
   - **Error:** (ninguno de negocio propio; `401` por sesión se prueba en metadata).
 - `UpdateTypeAsync`:
 
@@ -252,7 +253,7 @@ Equivalente a `UserEndpointsMetadataTests`:
 - Verifica 6 rutas con métodos HTTP correctos.
 - Verifica `WithName` exactos (`InsertType`, `GetType`, `GetTypes`, `UpdateType`, `UpdateTypeVisibility`, `GetTypesForSelects`).
 - Verifica `Produces` exactos de la tabla 4.3.
-- Verifica política: 4 endpoints con `[Authorize]` (solo autenticación), 2 endpoints con `AdminAuthorization.PolicyName`.
+- Verifica política: 3 endpoints con `[Authorize]` (solo autenticación), 3 endpoints con `AdminAuthorization.PolicyName`.
 - Verifica que `login` de Usuario sigue sin autorización (regresión).
 - Verifica parámetros `{id}` como `int` requerido.
 - Verifica que no hay `ProducesProblem`.
@@ -299,7 +300,7 @@ Cada test crea sus propios datos (criterio 15 de finalización), sin sembrado co
 | RF-3.1, RF-3.2, RF-3.5         | `TypeHandlers.GetTypeAsync`: `dto.Id = id` → `GetAsyncInfo`                                                                | `TypeHandlersGetTypeTests` (feliz, límite: `DISABLED`→`200`, CE-1)                                                                         |
 | RF-3.3, RF-8.1                 | `KeyNotFoundException` del repo → `404`                                                                                      | `TypeHandlersGetTypeTests` (error)                                                                                                               |
 | RF-3.4                         | Binding`int id` → `400` automático                                                                                          | `TypeEndpointsMetadataTests` (parámetro `int` requerido)                                                                                      |
-| RF-4.1, RF-4.2, RF-4.3         | `TypeHandlers.GetTypesAsync` → `GetAsyncAllInfo()`                                                                           | `TypeHandlersGetTypesTests` (feliz, límite: vacío, CE-6b)                                                                                      |
+| RF-4.1, RF-4.2, RF-4.3, RF-4.4 | `TypeHandlers.GetTypesAsync` → `GetAsyncAllInfo()`                                                                           | `TypeHandlersGetTypesTests` (feliz, límite: vacío, CE-6b, usuario no admin → 403)                                                              |
 | RF-5.1, RF-5.2, RF-5.5         | `TypeHandlers.UpdateTypeAsync`: `dto.Id = id` → `UpdateAsyncInfo`                                                          | `TypeHandlersUpdateTypeTests` (feliz, CE-1)                                                                                                      |
 | RF-5.3, RF-8.1                 | `KeyNotFoundException` → `404`                                                                                               | `TypeHandlersUpdateTypeTests` (error)                                                                                                            |
 | RF-5.4, RF-8.2                 | `EntityException` (longitud `Type`) → `400`                                                                                | `TypeHandlersUpdateTypeTests` (error)                                                                                                            |

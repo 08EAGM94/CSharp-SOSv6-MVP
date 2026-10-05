@@ -10,7 +10,7 @@
 
 - [X] **T3. Crear `EnterpriseEndpointsExtensions.cs` con `MapEnterpriseEndpoints()`.** RF-1, RF-9
 
-- Hecho cuando: `dotnet build` compila; 6 endpoints registrados con `MapGroup` correcto (`authenticatedEndpoints` para 4, `adminEndpoints` para 2), `Produces` exactos de la tabla de la spec, `WithName` exactos.
+- Hecho cuando: `dotnet build` compila; 6 endpoints registrados con `MapGroup` correcto (`authenticatedEndpoints` para 3: InsertEnterprise, GetEnterprise, GetEnterprisesForSelects; `adminEndpoints` para 3: GetEnterprises, UpdateEnterprise, UpdateEnterpriseVisibility), `Produces` exactos de la tabla de la spec, `WithName` exactos.
 
 - [X] **T4. Registrar módulo Enterprise en `Program.cs`.** RF-1, RF-9
 
@@ -28,9 +28,9 @@
 
 - Hecho cuando: `dotnet test --filter "EnterpriseHandlersGetEnterpriseTests"` pasa en verde; cubre: 200 con DTO completo, empresa DISABLED → 200 no 404, id de ruta prevalece, inexistente → 404, id no numérico → 400, fallo negocio → 400, mensaje en español.
 
-- [X] **T8. Tests `EnterpriseHandlersGetEnterprisesTests.cs`.** RF-4.1–4.4, RF-8.4, CE-6, CE-6b
+- [X] **T8. Tests `EnterpriseHandlersGetEnterprisesTests.cs`.** RF-4.1–4.5, RF-8.4, CE-6, CE-6b
 
-- Hecho cuando: `dotnet test --filter "EnterpriseHandlersGetEnterprisesTests"` pasa en verde; cubre: 200 con colección, incluye DISABLED, NO incluye Visibility en respuesta (llega null), vacío → 200 con [], fallo negocio → 400, mensaje en español.
+- Hecho cuando: `dotnet test --filter "EnterpriseHandlersGetEnterprisesTests"` pasa en verde; cubre: 200 con colección, incluye DISABLED, NO incluye Visibility en respuesta (llega null), vacío → 200 con [], **usuario no admin → 403 (RF-4.5)**, fallo negocio → 400, mensaje en español.
 
 - [X] **T9. Tests `EnterpriseHandlersUpdateEnterpriseTests.cs`.** RF-5.1–5.6, RF-8.1, RF-8.2, CE-1, CE-3, CE-5, CE-11, CE-14
 
@@ -50,11 +50,11 @@
 
 - [X] **T13. Tests `EnterpriseAuthorizationTests.cs` (401/403).** RF-1.1–1.7, CE-7, CE-8, CE-9, CE-15
 
-- Hecho cuando: `dotnet test --filter "EnterpriseAuthorizationTests"` pasa en verde; cubre: 6 endpoints → 401 sin token / token expirado; `UpdateEnterprise` y `UpdateEnterpriseVisibility` → 403 con rol `user`; 403 con sesión manipulada; `InsertEnterprise`, `GetEnterprise`, `GetEnterprises`, `GetEnterprisesForSelects` → 200/201 con rol `user` (no 403).
+- Hecho cuando: `dotnet test --filter "EnterpriseAuthorizationTests"` pasa en verde; cubre: 6 endpoints → 401 sin token / token expirado; `GetEnterprises`, `UpdateEnterprise`, `UpdateEnterpriseVisibility` → 403 con rol `user`; 403 con sesión manipulada; `InsertEnterprise`, `GetEnterprise`, `GetEnterprisesForSelects` → 200/201 con rol `user` (no 403).
 
 - [X] **T14. Tests `EnterpriseEndpointsMetadataTests.cs` (WithName + Produces).** RF-9.1, RF-9.2, RF-9.3
 
-- Hecho cuando: `dotnet test --filter "EnterpriseEndpointsMetadataTests"` pasa en verde; verifica que cada endpoint tiene `WithName` exacto y `Produces` con códigos exactos de la tabla de la spec.
+- Hecho cuando: `dotnet test --filter "EnterpriseEndpointsMetadataTests"` pasa en verde; verifica que cada endpoint tiene `WithName` exacto y `Produces` con códigos exactos de la tabla de la spec (**incluye 403 en GetEnterprises**).
 
 - [X] **T15. Ejecutar suite completa y confirmar `dotnet build` + `dotnet test` en verde.** Todos los RF
 

@@ -53,7 +53,7 @@
 - Mappers DTO→Entity.
 - Manejo global de errores (`ApiExceptionHandler`) — ya traduce excepciones a códigos HTTP y mensajes en español.
 - Autorización: política `AdminOnly` + `RequireAuthorization()` para autenticados.
-- Patrón de endpoints: grupo `authenticatedEndpoints` (requiere sesión) + grupo `adminEndpoints` (requiere `AdminOnly`).
+- Patrón de endpoints: grupo `authenticatedEndpoints` (requiere sesión) + grupo `adminEndpoints` (requiere `AdminOnly`). **`GetEnterprises` ahora usa `adminEndpoints` (3 endpoints admin, 3 autenticados).**
 - Patrón de tests: fakes de `ICommonService<T>` e `ISelectService<T>`, `HandlerTestSupport`, `TestHttp`.
 
 **Nuevas (lo que hay que crear de verdad):**
@@ -72,7 +72,7 @@
 |----------|--------|------|----------|----------------------------|---------|----------------------|
 | InsertEnterprise | POST | `/enterprise/` | `InsertEnterprise` | `201, 400, 401, 500` | `EnterpriseHandlers.InsertEnterpriseAsync` | `ICommonService<EnterpriseDTO>` |
 | GetEnterprise | GET | `/enterprise/{id}` | `GetEnterprise` | `200, 400, 401, 404` | `EnterpriseHandlers.GetEnterpriseAsync` | `ICommonService<EnterpriseDTO>` |
-| GetEnterprises | GET | `/enterprises/` | `GetEnterprises` | `200, 401` | `EnterpriseHandlers.GetEnterprisesAsync` | `ICommonService<EnterpriseDTO>` |
+| GetEnterprises | GET | `/enterprises/` | `GetEnterprises` | `200, 401, 403` | `EnterpriseHandlers.GetEnterprisesAsync` | `ICommonService<EnterpriseDTO>` |
 | UpdateEnterprise | PUT | `/enterprise/{id}` | `UpdateEnterprise` | `204, 400, 401, 403, 404` | `EnterpriseHandlers.UpdateEnterpriseAsync` | `ICommonService<EnterpriseDTO>` |
 | UpdateEnterpriseVisibility | PUT | `/enterprisev/{id}` | `UpdateEnterpriseVisibility` | `204, 400, 401, 403, 404` | `EnterpriseHandlers.UpdateEnterpriseVisibilityAsync` | `ICommonService<EnterpriseDTO>` |
 | GetEnterprisesForSelects | GET | `/enterprisesct/` | `GetEnterprisesForSelects` | `200, 401` | `EnterpriseHandlers.GetEnterprisesForSelectsAsync` | `ISelectService<EnterpriseDTO>` |
@@ -89,7 +89,7 @@
 ```
 Para TODOS los endpoints:
   1. Middleware JWT valida token → si inválido/expirado → 401 (RF-1.2, RF-1.7)
-  2. Para UpdateEnterprise y UpdateEnterpriseVisibility:
+  2. Para GetEnterprises, UpdateEnterprise y UpdateEnterpriseVisibility:
        Política AdminOnly evalúa claim Role == "admin" → si no → 403 (RF-1.3, RF-1.4, RF-1.5)
   3. Para endpoints con {id}:
        Model binding intenta parsear int → si falla → 400 (RF-3.4, RF-5.6, RF-6.6, CE-14)
@@ -126,11 +126,12 @@ INPUT: int id (de ruta)
 
 ### GetEnterprises (GET `/enterprises/`)
 ```
-1. CommonService.GetAsyncAllInfo() → Repository.GetAsyncAllInfo():
+1. Política AdminOnly evalúa claim Role == "admin" → si no → 403 (RF-1.3, RF-1.4, RF-4.5).
+2. CommonService.GetAsyncAllInfo() → Repository.GetAsyncAllInfo():
       - Proyecta SOLO Id, CommercialName, TradeName.
       - NO filtra por Visibility (incluye DISABLED) (RF-4.1, RF-4.2, CE-6b).
       - NO incluye Visibility en la respuesta (RF-4.4).
-2. Responde 200 con IEnumerable<EnterpriseDTO> (propiedades no incluidas llegan null).
+3. Responde 200 con IEnumerable<EnterpriseDTO> (propiedades no incluidas llegan null).
 ```
 
 ### UpdateEnterprise (PUT `/enterprise/{id}`)
@@ -259,12 +260,12 @@ La @implementer resolvió que los tests de 401/403 de `EnterpriseAuthorizationTe
 |-----------------|-------------------|-----------------|
 | `EnterpriseHandlersInsertEnterpriseTests.cs` | 1. `ValidEnterprise_IsAnsweredWithCreatedWithoutBodyAndWithoutLocation`<br>2. `ValidEnterprise_IsDelegatedOnceToUseCaseWithContactWhenFullNameProvided`<br>3. `ValidEnterprise_IsDelegatedOnceToUseCaseWithoutContactWhenFullNameMissing`<br>4. `ContactDtoWithEmptyFullName_IsIgnored_OnlyEnterpriseCreated`<br>5. `VisibilitySentInBody_IsNotValidatedNorRewrittenByHandler`<br>6. `DuplicateEnterpriseOnUniqueIndex_IsTranslatedToInternalServerError`<br>7. `EnterpriseOutsideAllowedLengths_IsTranslatedToBadRequest`<br>8. `ContactFullNameOutsideAllowedLength_IsTranslatedToBadRequest`<br>9. `EntityRuleViolation_DeliversMessageInSpanish` | RF-2.1–2.9, RF-8.2, RF-8.5, CE-4, CE-11, CE-12, CE-17, CE-18 |
 | `EnterpriseHandlersGetEnterpriseTests.cs` | 1. `ExistingEnterprise_IsAnsweredWithOkAndFullDto`<br>2. `ExistingEnterpriseWithDisabledVisibility_IsAnsweredWithOkNot404`<br>3. `RouteIdPrevailsOverBodyId`<br>4. `NonExistentEnterprise_IsTranslatedToNotFound`<br>5. `NonNumericRouteId_IsTranslatedToBadRequest`<br>6. `BusinessFailure_IsTranslatedToBadRequest`<br>7. `BusinessFailure_DeliversMessageInSpanish` | RF-3.1–3.5, RF-8.1, RF-8.4, CE-3, CE-10, CE-14 |
-| `EnterpriseHandlersGetEnterprisesTests.cs` | 1. `Enterprises_AreAnsweredWithOkAndCollectionFromUseCase`<br>2. `Listing_IncludesDisabledEnterprises`<br>3. `Listing_DoesNotIncludeVisibilityInResponse`<br>4. `EmptyStore_IsAnsweredWithOkAndEmptyCollection`<br>5. `BusinessFailure_IsTranslatedToBadRequest`<br>6. `BusinessFailure_DeliversMessageInSpanish` | RF-4.1–4.4, RF-8.4, CE-6, CE-6b |
+| `EnterpriseHandlersGetEnterprisesTests.cs` | 1. `Enterprises_AreAnsweredWithOkAndCollectionFromUseCase`<br>2. `Listing_IncludesDisabledEnterprises`<br>3. `Listing_DoesNotIncludeVisibilityInResponse`<br>4. `EmptyStore_IsAnsweredWithOkAndEmptyCollection`<br>5. `BusinessFailure_IsTranslatedToBadRequest`<br>6. `BusinessFailure_DeliversMessageInSpanish`<br>7. `NonAdminUser_IsTranslatedToForbidden` | RF-4.1–4.5, RF-8.4, CE-6, CE-6b |
 | `EnterpriseHandlersUpdateEnterpriseTests.cs` | 1. `ValidUpdate_IsAnsweredWithNoContent`<br>2. `RouteIdPrevailsOverBodyId`<br>3. `NonExistentEnterprise_IsTranslatedToNotFound`<br>4. `NonNumericRouteId_IsTranslatedToBadRequest`<br>5. `EnterpriseOutsideAllowedLengths_IsTranslatedToBadRequest`<br>6. `BusinessFailure_IsTranslatedToBadRequest`<br>7. `BusinessFailure_DeliversMessageInSpanish` | RF-5.1–5.6, RF-8.1, RF-8.2, CE-1, CE-3, CE-5, CE-11, CE-14 |
 | `EnterpriseHandlersUpdateEnterpriseVisibilityTests.cs` | 1. `ValidVisibilityUpdate_IsAnsweredWithNoContent`<br>2. `RouteIdPrevailsOverBodyId`<br>3. `OtherPropertiesInBody_AreIgnored`<br>4. `InvalidVisibilityValue_IsTranslatedToBadRequest`<br>5. `NonExistentEnterprise_IsTranslatedToNotFound`<br>6. `NonNumericRouteId_IsTranslatedToBadRequest`<br>7. `BusinessFailure_IsTranslatedToBadRequest`<br>8. `BusinessFailure_DeliversMessageInSpanish` | RF-6.1–6.6, RF-8.1, RF-8.3, CE-1, CE-2, CE-3, CE-13, CE-14 |
 | `EnterpriseHandlersGetEnterprisesForSelectsTests.cs` | 1. `EnabledEnterprises_AreAnsweredWithOkAndCollectionFromSelectService`<br>2. `Listing_AsksSelectServiceOnce_LeavesCommonServiceUntouched`<br>3. `EnabledCollection_ReachesResponseIntactWithoutFilteringNorAdding`<br>4. `VisibilityFilterLivesInSelectRepositoryNotInHandler`<br>5. `AllDisabledStore_ProducesEmptyCollection`<br>6. `NoRegisteredEnterprises_IsAnsweredWithOkAndEmptyCollection`<br>7. `BusinessFailure_IsTranslatedToBadRequest`<br>8. `GenericUseCaseFailure_IsTranslatedToBadRequest`<br>9. `BusinessFailure_DeliversMessageInSpanish` | RF-7.1–7.4, RF-8.3, RF-8.4, RF-8.6, CE-6, CE-6c |
 | `EnterpriseEndpointsMetadataTests.cs` | 1. `InsertEnterprise_HasCorrectWithNameAndProduces`<br>2. `GetEnterprise_HasCorrectWithNameAndProduces`<br>3. `GetEnterprises_HasCorrectWithNameAndProduces`<br>4. `UpdateEnterprise_HasCorrectWithNameAndProduces`<br>5. `UpdateEnterpriseVisibility_HasCorrectWithNameAndProduces`<br>6. `GetEnterprisesForSelects_HasCorrectWithNameAndProduces` | RF-9.1, RF-9.2, RF-9.3 |
-| `EnterpriseAuthorizationTests.cs` | 1. `AllEndpoints_RequireValidSession_401WhenMissing`<br>2. `AllEndpoints_RequireValidSession_401WhenExpired`<br>3. `UpdateEndpoints_RequireAdminRole_403WhenUser`<br>4. `UpdateEndpoints_RequireAdminRole_403WhenCorruptedSession`<br>5. `ReadEndpoints_AcceptAnyAuthenticatedRole_Not403` | RF-1.1–1.7, CE-7, CE-8, CE-9, CE-15 |
+| `EnterpriseAuthorizationTests.cs` | 1. `AllEndpoints_RequireValidSession_401WhenMissing`<br>2. `AllEndpoints_RequireValidSession_401WhenExpired`<br>3. `UpdateAndListEndpoints_RequireAdminRole_403WhenUser`<br>4. `UpdateAndListEndpoints_RequireAdminRole_403WhenCorruptedSession`<br>5. `ReadEndpoints_AcceptAnyAuthenticatedRole_Not403` | RF-1.1–1.7, CE-7, CE-8, CE-9, CE-15 |
 
 **Comando de verificación:** `dotnet build` y `dotnet test` (deben pasar en verde).
 
@@ -291,7 +292,7 @@ La @implementer resolvió que los tests de 401/403 de `EnterpriseAuthorizationTe
 1. **Atomicidad de empresa+contacto NO cubierta por la suite de tests**: el fake no puede simular rollback de transacción real. Una regresión en esa transacción no sería detectada por `dotnet test`; quedaría cubierta por el criterio de finalización 16, que la atribuye a la capa de persistencia (repositorio intocable, principio 5 de la Constitución).
 2. **ContactDTO sin FullName**: El handler debe poner `contact = null` **antes** de llamar al caso de uso. Si se pasa `ContactDTO` con `FullName = ""` al caso de uso, el mapper creará `ContactEntity` con `FullName = ""` → `EntityException` en setter → 400 incorrecto. → Test CE-18 verifica que NO se llama `AddAsyncInfo` con contact.
 3. **Visibilidad en respuestas de listado**: `GetAsyncAllInfo` y `GetAsyncInfoForSelects` **no proyectan `Visibility`**. Los DTOs devueltos tendrán `Visibility = null`. El consumidor no debe asumir presencia (RF-4.4, RF-7.4). → Tests verifican que `Visibility` no está en JSON o es null.
-4. **Autorización**: `UpdateEnterprise` y `UpdateEnterpriseVisibility` usan grupo `adminEndpoints` (política `AdminOnly`). Los otros 4 usan grupo `authenticatedEndpoints` (solo `RequireAuthorization()`). → Tests de autorización deben usar `CreateSession(role: "user")` y `CreateSession(role: "admin")` y verificar 403 vs 200/204.
+4. **Autorización**: `GetEnterprises`, `UpdateEnterprise` y `UpdateEnterpriseVisibility` usan grupo `adminEndpoints` (política `AdminOnly`). Los otros 3 (`InsertEnterprise`, `GetEnterprise`, `GetEnterprisesForSelects`) usan grupo `authenticatedEndpoints` (solo `RequireAuthorization()`). → Tests de autorización deben usar `CreateSession(role: "user")` y `CreateSession(role: "admin")` y verificar 403 vs 200/204.
 5. **Id de ruta vs cuerpo**: En `UpdateEnterprise` y `UpdateEnterpriseVisibility`, el handler **sobrescribe** `dto.Id = id` (ruta). En `GetEnterprise`, crea DTO nuevo con `Id = id`. → Tests CE-1 verifican que el Id del cuerpo se ignora.
 6. **Mensajes en español**: `ApiExceptionHandler` escribe `exception.Message` tal cual. Las excepciones de dominio (`EntityException`, `ApplicationException`) ya lanzan mensajes en español. → Tests `*_DeliversMessageInSpanish` verifican cuerpo de respuesta.
 7. **Minimal API solo admite un cuerpo por endpoint**: un handler con dos parámetros complejos (`EnterpriseDTO dto, ContactDTO? contact`) rompe el binding. El record envoltorio `InsertEnterpriseRequest` resuelve esto; si se eliminara o cambiara la firma, el binding fallaría silenciosamente en tiempo de ejecución (el segundo parámetro llega null).

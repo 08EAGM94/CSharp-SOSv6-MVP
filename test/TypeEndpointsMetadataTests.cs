@@ -31,7 +31,7 @@ public class TypeEndpointsMetadataTests
     [
         ("/type/", "POST", "InsertType", [201, 400, 401, 500]),
         ("/type/{id}", "GET", "GetType", [200, 400, 401, 404]),
-        ("/type/", "GET", "GetTypes", [200, 401]),
+        ("/type/", "GET", "GetTypes", [200, 401, 403]),
         ("/type/{id}", "PUT", "UpdateType", [204, 400, 401, 403, 404]),
         ("/typev/{id}", "PUT", "UpdateTypeVisibility", [204, 400, 401, 403, 404]),
         ("/typesct/", "GET", "GetTypesForSelects", [200, 401])
@@ -154,25 +154,28 @@ public class TypeEndpointsMetadataTests
     [Theory]
     [InlineData("/type/", "POST")]
     [InlineData("/type/{id}", "GET")]
-    [InlineData("/type/", "GET")]
     [InlineData("/typesct/", "GET")]
     public void AuthenticatedRoutes_RequireASessionWithoutTheAdminRole(string route, string method)
     {
         var authorizeData = FindType(route, method).Metadata.GetOrderedMetadata<IAuthorizeData>().ToList();
 
-        // A valid session is enough for these four routes: they declare authorization but never the
+        // A valid session is enough for these three routes: they declare authorization but never the
         // admin policy, so the role of the session is never compared (RF-1.6).
         Assert.NotEmpty(authorizeData);
         Assert.DoesNotContain(authorizeData, data => data.Policy == AdminAuthorization.PolicyName);
     }
 
     [Theory]
+    [InlineData("/type/", "GET")]
     [InlineData("/type/{id}", "PUT")]
     [InlineData("/typev/{id}", "PUT")]
     public void AdminRoutes_RequireTheAdminOnlyPolicy(string route, string method)
     {
         var authorizeData = FindType(route, method).Metadata.GetOrderedMetadata<IAuthorizeData>().ToList();
 
+        // Governing the catalogue —reading the whole listing and both writes— demands the role of
+        // the session to be admin, so these three routes carry the admin policy and declare 403
+        // besides 401 (RF-1.3, RF-1.4, RF-4.4, CE-8).
         Assert.NotEmpty(authorizeData);
         Assert.Contains(authorizeData, data => data.Policy == AdminAuthorization.PolicyName);
     }
@@ -189,7 +192,7 @@ public class TypeEndpointsMetadataTests
         var authorizationService = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
 
         // The policy reads the role of the session only, so a missing, non admin or corrupted role
-        // ends in 403 for both update routes (RF-1.3, RF-1.4, RF-1.5).
+        // ends in 403 for the three routes that govern the catalogue (RF-1.3, RF-1.4, RF-1.5).
         Assert.True(await AuthorizeAsync(authorizationService, PrincipalWithRole(AdminAuthorization.AdminRole)));
         Assert.False(await AuthorizeAsync(authorizationService, PrincipalWithRole("user")));
         Assert.False(await AuthorizeAsync(authorizationService, PrincipalWithRole(string.Empty)));
@@ -202,10 +205,11 @@ public class TypeEndpointsMetadataTests
     [InlineData(nameof(TypeHandlers.UpdateTypeVisibilityAsync))]
     public void RoutesWithIdentifier_ReceiveItAsAnIntegerSoANonNumericValueIsRejected(string handlerName)
     {
-        var identifier = Assert.Single(typeof(TypeHandlers)
-            .GetMethod(handlerName)!
-            .GetParameters()
-            .Where(parameter => parameter.Name == "id"));
+        var identifier = Assert.Single(
+            typeof(TypeHandlers)
+                .GetMethod(handlerName)!
+                .GetParameters(),
+            parameter => parameter.Name == "id");
 
         Assert.Equal(typeof(int), identifier.ParameterType);
     }

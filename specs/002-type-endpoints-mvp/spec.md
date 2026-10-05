@@ -13,7 +13,7 @@ El sistema SOS v6 administra **bitácoras**, que son las órdenes de servicio re
 
 Esta spec define el **caso de uso Tipo**: la capacidad de registrar, consultar, listar, actualizar y cambiar la visibilidad de los tipos que clasifican a los equipos.
 
-El objetivo es que **cualquier usuario autenticado** pueda consultar el catálogo de tipos (incluido el listado reducido para *selects* de la interfaz al asignar un tipo a un equipo), y que **únicamente un administrador autenticado** pueda gobernar dicho catálogo (crear, modificar y habilitar/deshabilitar tipos).
+El objetivo es que **cualquier usuario autenticado** pueda consultar un tipo individual (`GetType`), crear un tipo (`InsertType`) y obtener el listado reducido para *selects* (`GetTypesForSelects`), y que **únicamente un administrador autenticado** pueda **gobernar** dicho catálogo (consultar el listado completo mediante `GetTypes`, modificar y habilitar/deshabilitar tipos mediante `UpdateType` y `UpdateTypeVisibility`).
 
 **Por qué este caso de uso va después de Usuario:** el control de acceso a los endpoints de Tipo depende de la sesión y el rol establecidos por el caso de uso Usuario (spec 001).
 
@@ -24,7 +24,7 @@ El objetivo es que **cualquier usuario autenticado** pueda consultar el catálog
 | Actor                          | Descripción                                                                                                               | Puede hacer                                                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Administrador**        | Usuario con rol `admin`. Único autorizado a gobernar el catálogo de tipos.                                              | Iniciar sesión (via caso de uso Usuario), crear, consultar, listar, actualizar y cambiar visibilidad de tipos. |
-| **Usuario operativo**    | Usuario con un rol distinto de `admin`. Existe, puede autenticarse y consultar el catálogo.                             | Iniciar sesión, consultar un tipo, listar todos los tipos, listar tipos para selects.                            |
+| **Usuario operativo**    | Usuario con un rol distinto de `admin`. Existe, puede autenticarse y consultar el catálogo.                             | Iniciar sesión, consultar un tipo, listar tipos para selects.                            |
 | **Consumidor de la API** | Cliente (aplicación o herramienta) que invoca los endpoints de esta spec.                                                 | Invocar los seis endpoints respetando el contrato de cada uno.                                                   |
 
 ---
@@ -37,7 +37,7 @@ El objetivo es que **cualquier usuario autenticado** pueda consultar el catálog
 
 ### HU-2 — Consultar el catálogo de tipos
 
-**Como** usuario operativo del sistema, **quiero** consultar un tipo por su identificador, listar todos los tipos existentes y obtener la lista reducida para selects, **para** poder clasificar correctamente el equipo al registrar una bitácora (orden de servicio), ya que el equipo exige un tipo obligatorio y el select de la interfaz se alimenta del endpoint reducido.
+**Como** usuario operativo del sistema, **quiero** consultar un tipo por su identificador y obtener la lista reducida para selects, **para** poder clasificar correctamente el equipo al registrar una bitácora (orden de servicio), ya que el equipo exige un tipo obligatorio y el select de la interfaz se alimenta del endpoint reducido.
 
 ### HU-3 — Proteger el catálogo de tipos
 
@@ -73,10 +73,10 @@ Todos los endpoints de esta spec **exigen sesión válida**.
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RF-1.1 | Cuando una petición se dirige a cualquiera de los seis endpoints, el sistema verificará primero que la petición porta una sesión válida.                                                                      |
 | RF-1.2 | Si una petición no porta sesión válida o su sesión ha expirado, entonces el sistema responderá con el código `401` y no ejecutará ninguna función del endpoint.                                               |
-| RF-1.3 | Donde exista una sesión válida, el sistema comprobará **antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **solo para los endpoints `UpdateType` y `UpdateTypeVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
-| RF-1.4 | Si el rol de la sesión no es `admin` **y el endpoint es `UpdateType` o `UpdateTypeVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint.       |
+| RF-1.3 | Donde exista una sesión válida, el sistema comprobará **antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **para los endpoints `GetTypes`, `UpdateType` y `UpdateTypeVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
+| RF-1.4 | Si el rol de la sesión no es `admin` **y el endpoint es `GetTypes`, `UpdateType` o `UpdateTypeVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint.       |
 | RF-1.5 | Si la comparación del rol no puede realizarse por una sesión corrupta o manipulada, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint.                    |
-| RF-1.6 | Para los endpoints `InsertType`, `GetType`, `GetTypes` y `GetTypesForSelects`, **basta con una sesión válida (cualquier rol autenticado)**; no se verifica el rol `admin`.                                    |
+| RF-1.6 | Para los endpoints `InsertType`, `GetType` y `GetTypesForSelects`, **basta con una sesión válida (cualquier rol autenticado)**; no se verifica el rol `admin`.                                    |
 | RF-1.7 | Ningún endpoint de esta spec es público: todos exigen sesión válida. No existe equivalente a `login` en este caso de uso.                                                                                     |
 
 ### RF-2 — `InsertType` (POST `/type/`)
@@ -106,13 +106,14 @@ Obtiene un registro de tipo. **No filtra por visibilidad**: devuelve `200` con e
 
 ### RF-4 — `GetTypes` (GET `/type/`)
 
-Obtiene **todos** los registros de tipos, **incluyendo los deshabilitados**. Esta decisión es coherente con el comportamiento de `TypeRepository.GetAsyncAllInfo()`, que no aplica filtro de visibilidad.
+Obtiene **todos** los registros de tipos, **incluyendo los deshabilitados**. Esta decisión es coherente con el comportamiento de `TypeRepository.GetAsyncAllInfo()`, que no aplica filtro de visibilidad. **Este endpoint es accesible únicamente para administradores autenticados.**
 
 | #      | Criterio de aceptación                                                                                                          |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| RF-4.1 | Cuando un usuario autenticado invoque `GET /type/`, el sistema devolverá el conjunto de **todos** los registros de tipos, independientemente de su `Visibility`. |
+| RF-4.1 | Cuando un **administrador autenticado** invoque `GET /type/`, el sistema devolverá el conjunto de **todos** los registros de tipos, independientemente de su `Visibility`. |
 | RF-4.2 | El conjunto devuelto **incluirá** registros con `Visibility = DISABLED`, con independencia de su existencia en el almacen.     |
 | RF-4.3 | Si no existe ningún tipo registrado, entonces el sistema devolverá un conjunto vacío con el código `200`.                       |
+| RF-4.4 | Si un usuario autenticado **sin rol `admin`** invoque `GET /type/`, el sistema responderá con el código `403` y no ejecutará ninguna función del endpoint. |
 
 ### RF-5 — `UpdateType` (PUT `/type/{id}`)
 
@@ -179,7 +180,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 | ---------------------- | -------------------- | ------------------------------------------------------------------------------------- |
 | `InsertType`           | `InsertType`         | `201`, `400`, `401`, `500`                                                            |
 | `GetType`              | `GetType`            | `200`, `400`, `401`, `404`                                                            |
-| `GetTypes`             | `GetTypes`           | `200`, `401`                                                                          |
+| `GetTypes`             | `GetTypes`           | `200`, `401`, `403`                                                                   |
 | `UpdateType`           | `UpdateType`         | `204`, `400`, `401`, `403`, `404`                                                     |
 | `UpdateTypeVisibility` | `UpdateTypeVisibility` | `204`, `400`, `401`, `403`, `404`                                                   |
 | `GetTypesForSelects`   | `GetTypesForSelects` | `200`, `401`                                                                          |
@@ -187,7 +188,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 **Derivación:**  
 - `201/204/200` son los códigos de éxito de RF-2.4, RF-5.5, RF-6.5, RF-3.2, RF-4.1, RF-7.1.  
 - `401` aplica a **todos** por RF-1.2.  
-- `403` aplica **solo** a `UpdateType` y `UpdateTypeVisibility` por RF-1.4.  
+- `403` aplica a `GetTypes`, `UpdateType` y `UpdateTypeVisibility` por RF-1.4.  
 - `400` aplica a todos los que validan `Id` numérico (RF-3.4, RF-5.6, RF-6.6), reglas de negocio `Type` (RF-2.3, RF-5.4), `Visibility` (RF-6.3) o DTO inválido (RF-8.2/8.3).  
 - `404` aplica a los que buscan por `Id` (RF-3.3, RF-5.3, RF-6.4).  
 - `500` aplica solo a `InsertType` por conflicto de unicidad (RF-2.6).
@@ -224,7 +225,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 | CE-6b | Existe al menos un tipo deshabilitado y se invoca `GET /type/`.                                  | El conjunto devuelto **incluye** el registro con `Visibility = DISABLED` (RF-4.2). |
 | CE-6c | Existe al menos un tipo deshabilitado y se invoca `GET /typesct/`.                               | El conjunto devuelto **no incluye** el registro con `Visibility = DISABLED` (RF-7.2). |
 | CE-7  | Se invocan los seis endpoints sin sesión o con sesión expirada.                                     | `401` y no se ejecuta ninguna función del endpoint.              |
-| CE-8  | Se invocan `UpdateType` o `UpdateTypeVisibility` con una sesión de rol distinto de `admin`.       | `403` y no se ejecuta ninguna función del endpoint.              |
+| CE-8  | Se invocan `GetTypes`, `UpdateType` o `UpdateTypeVisibility` con una sesión de rol distinto de `admin`.       | `403` y no se ejecuta ninguna función del endpoint.              |
 | CE-9  | Se invocan `UpdateType` o `UpdateTypeVisibility` con rol `admin`, pero la sesión está manipulada. | `403`.                                                           |
 | CE-10 | `GetType` devuelve un tipo con `Visibility = DISABLED`.                                             | `200` con el tipo (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
 | CE-11 | El DTO de `InsertType` o `UpdateType` viola una regla de negocio (`Type` < 5 o > 50 caracteres).  | `400` y no se escribe ningún dato.                               |
@@ -258,8 +259,8 @@ El caso de uso Tipo se considera concluido cuando:
 
 1. Los seis endpoints de la sección 4 están disponibles y responden conforme a su criterio de aceptación.
 2. Los seis endpoints rechazan con `401` las peticiones sin sesión válida o con sesión vencida.
-3. `UpdateType` y `UpdateTypeVisibility` rechazan con `403` las peticiones cuyo `Role` de los `claims` no sea `admin`, sin ejecutar ninguna función del endpoint y sin consultar `Visibility` ni el almacen.
-4. `InsertType`, `GetType`, `GetTypes` y `GetTypesForSelects` aceptan cualquier rol autenticado (no exigen `admin`).
+3. `GetTypes`, `UpdateType` y `UpdateTypeVisibility` rechazan con `403` las peticiones cuyo `Role` de los `claims` no sea `admin`, sin ejecutar ninguna función del endpoint y sin consultar `Visibility` ni el almacen.
+4. `InsertType`, `GetType` y `GetTypesForSelects` aceptan cualquier rol autenticado (no exigen `admin`).
 5. Un `Id` de ruta no numérico se rechaza con `400` en todos los endpoints que lo reciben.
 6. El `Id` del parámetro de ruta prevalece sobre el `Id` del cuerpo en `GetType`, `UpdateType` y `UpdateTypeVisibility`.
 7. `UpdateTypeVisibility` aplica únicamente el campo `Visibility` y ignora cualquier otra propiedad del DTO recibido.

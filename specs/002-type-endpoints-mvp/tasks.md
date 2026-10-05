@@ -90,17 +90,19 @@ Reglas transversales que aplican a todas las tareas:
 
 ### T-05 `GetTypesAsync` handler + tests
 
-- [x] Añadir a `TypeHandlers.cs`: `public static async Task<IResult> GetTypesAsync(ICommonService<TypeDTO> commonService)`.
+- [x] Añadir a `TypeHandlers.cs`: `public static async Task<IResult> GetTypesAsync(ICommonService<TypeDTO> commonService, ClaimsPrincipal principal)`.
 - [x] Invocar `commonService.GetAsyncAllInfo()` y responder `Results.Ok(colección)`.
 - [x] Responder `200` con `[]` si no hay tipos.
-- [x] Crear `test/TypeHandlersGetTypesTests.cs` con **tres tests**:
+- [x] Si el rol de la sesión no es `admin`, responder `403` en español sin invocar el caso de uso (RF-4.4, CE-8, RF-1.5).
+- [x] Crear `test/TypeHandlersGetTypesTests.cs` con **cuatro tests**:
   1. **Camino feliz:** Repositorio devuelve lista con varios tipos (al menos uno `DISABLED`) → `200` con colección que incluye `DISABLED` (RF-4.2, CE-6b).
   2. **Caso límite:** Repositorio devuelve lista vacía → `200` con `[]` (RF-4.3, CE-6).
-  3. **Caso de error:** (ninguno de negocio propio); verificar que excepción genérica del caso de uso → `400` (RF-8.4).
+  3. **Caso límite:** Usuario autenticado sin rol `admin` → `403` (RF-4.4).
+  4. **Caso de error:** (ninguno de negocio propio); verificar que excepción genérica del caso de uso → `400` (RF-8.4).
 
-**RF cubiertos:** RF-4.1, RF-4.2, RF-4.3, CE-6, CE-6b.
+**RF cubiertos:** RF-4.1, RF-4.2, RF-4.3, RF-4.4, CE-6, CE-6b.
 
-**Hecho cuando:** los tres tests pasan; el test de límite confirma `200` con `[]` y no `404`; el test feliz confirma que `DISABLED` se incluye.
+**Hecho cuando:** los cuatro tests pasan; el test de límite confirma `200` con `[]` y no `404`; el test feliz confirma que `DISABLED` se incluye; el test de límite confirma `403` para usuario no admin.
 
 ---
 
@@ -159,13 +161,13 @@ Reglas transversales que aplican a todas las tareas:
 
 - [x] Crear `sosMVP/Extensions/TypeEndpointsExtensions.cs` con `static IEndpointRouteBuilder MapTypeEndpoints(this IEndpointRouteBuilder endpoints)`.
 - [x] Declarar **dos grupos**:
-  - `var authEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization();` → `InsertType`, `GetType`, `GetTypes`, `GetTypesForSelects`.
-  - `var adminEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization(AdminAuthorization.PolicyName);` → `UpdateType`, `UpdateTypeVisibility`.
+  - `var authEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization();` → `InsertType`, `GetType`, `GetTypesForSelects`.
+  - `var adminEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization(AdminAuthorization.PolicyName);` → `GetTypes`, `UpdateType`, `UpdateTypeVisibility`.
 - [x] Mapear los 6 endpoints con delegados de `TypeHandlers`.
 - [x] Encadenar `Produces` y `WithName` **exactos** (tabla 4.3 del plan):
   - `InsertType`: `.Produces(201).Produces(400).Produces(401).Produces(500).WithName("InsertType")`
   - `GetType`: `.Produces<TypeDTO>(200).Produces(400).Produces(401).Produces(404).WithName("GetType")`
-  - `GetTypes`: `.Produces<IEnumerable<TypeDTO>>(200).Produces(401).WithName("GetTypes")`
+  - `GetTypes`: `.Produces<IEnumerable<TypeDTO>>(200).Produces(401).Produces(403).WithName("GetTypes")`
   - `UpdateType`: `.Produces(204).Produces(400).Produces(401).Produces(403).Produces(404).WithName("UpdateType")`
   - `UpdateTypeVisibility`: `.Produces(204).Produces(400).Produces(401).Produces(403).Produces(404).WithName("UpdateTypeVisibility")`
   - `GetTypesForSelects`: `.Produces<IEnumerable<TypeDTO>>(200).Produces(401).WithName("GetTypesForSelects")`
@@ -174,7 +176,7 @@ Reglas transversales que aplican a todas las tareas:
 - [x] Crear `test/TypeEndpointsMetadataTests.cs` imitando `UserEndpointsMetadataTests`:
   - `ExpectedContract` con las 6 filas de la tabla 4.3.
   - `MaterializeEndpoints()` que construya `WebApplication.CreateBuilder()`, registre `ICommonService<TypeDTO>` e `ISelectService<TypeDTO>` como `null!`, registre `JwtTestTokens.Factory()`.
-  - Tests: 6 rutas declaradas con métodos HTTP correctos, cada una con sus códigos exactos, `WithName` exacto, políticas correctas (4 con `[Authorize]`, 2 con `AdminOnly`), parámetros `{id}` como `int` requerido, sin `ProducesProblem`.
+  - Tests: 6 rutas declaradas con métodos HTTP correctos, cada una con sus códigos exactos, `WithName` exacto, políticas correctas (3 con `[Authorize]`, 3 con `AdminOnly`), parámetros `{id}` como `int` requerido, sin `ProducesProblem`.
   - Test de regresión: `UserEndpointsMetadataTests` sigue en verde.
 - [x] En `Program.cs`, tras `builder.Services.AddUserModule();`, añadir `builder.Services.AddTypeModule();`.
 - [x] Tras `app.MapUserEndpoints();`, añadir `app.MapTypeEndpoints();`.
@@ -198,8 +200,8 @@ Reglas transversales que aplican a todas las tareas:
 - [x] Recorrer los 15 criterios de finalización de la spec (sección 8) y apuntar cada uno a su prueba o comprobación:
   1. 6 endpoints disponibles → `TypeHandlers*Tests` (feliz) + `TypeEndpointsMetadataTests`.
   2. 6 endpoints rechazan `401` sin sesión → metadata declara `401` en todos; limitación conocida (middleware real no se prueba sin `WebApplicationFactory`).
-  3. `UpdateType` y `UpdateTypeVisibility` rechazan `403` sin rol `admin` → metadata declara `403` + política `AdminOnly` en esos 2; `AdminAuthorizationTests` (existente) cubre la lógica.
-  4. `InsertType`, `GetType`, `GetTypes`, `GetTypesForSelects` aceptan cualquier rol autenticado → metadata: esos 4 **no** tienen política `AdminOnly`.
+  3. `GetTypes`, `UpdateType` y `UpdateTypeVisibility` rechazan `403` sin rol `admin` → metadata declara `403` + política `AdminOnly` en esos 3; `AdminAuthorizationTests` (existente) cubre la lógica; `TypeHandlersGetTypesTests` cubre el `403` del handler de listado.
+  4. `InsertType`, `GetType`, `GetTypesForSelects` aceptan cualquier rol autenticado → metadata: esos 3 **no** tienen política `AdminOnly`.
   5. `Id` no numérico → `400` → metadata verifica parámetro `int` requerido.
   6. `Id` de ruta prevalece → `TypeHandlersGetTypeTests`, `UpdateTypeTests`, `UpdateTypeVisibilityTests` (CE-1).
   7. `UpdateTypeVisibility` solo propaga `Id` y `Visibility` → `UpdateTypeVisibilityTests` (CE-2).
@@ -224,7 +226,7 @@ Reglas transversales que aplican a todas las tareas:
 2. **T-02** Crear `AddTypeModule()` en `ServiceCollectionExtensions` — RF: RNF-1, RNF-2, RNF-3
 3. **T-03** `InsertTypeAsync` handler + tests (feliz + límite + error) — RF: RF-2.1–2.6, RF-8.2, RF-8.5, CE-4, CE-11
 4. **T-04** `GetTypeAsync` handler + tests (feliz + límite + error) — RF: RF-3.1–3.5, RF-8.1, RF-8.2, CE-1, CE-3, CE-10, CE-13
-5. **T-05** `GetTypesAsync` handler + tests (feliz + límite + error) — RF: RF-4.1–4.3, CE-6, CE-6b
+5. **T-05** `GetTypesAsync` handler + tests (feliz + límite + error) — RF: RF-4.1–4.4, CE-6, CE-6b
 6. **T-06** `UpdateTypeAsync` handler + tests (feliz + límite + error) — RF: RF-5.1–5.6, RF-8.1, RF-8.2, CE-1, CE-5, CE-11
 7. **T-07** `UpdateTypeVisibilityAsync` handler + tests (feliz + límite + error) — RF: RF-6.1–6.6, RF-8.1, RF-8.3, CE-1, CE-2, CE-12
 8. **T-08** `GetTypesForSelectsAsync` handler + tests (feliz + límite + error) — RF: RF-7.1–7.3, CE-6, CE-6c
@@ -264,7 +266,7 @@ Total: **10 tareas** (T-01 y T-02 son fundacionales; T-03 a T-08 cada una entreg
 | RF-1.1–1.7 | `TypeEndpointsExtensions.cs`, `Program.cs` | `TypeEndpointsMetadataTests`, `AdminAuthorizationTests` (existente) |
 | RF-2.1–2.6 | `TypeHandlers.cs` (InsertType), `TypeRepository` (existente) | `TypeHandlersInsertTypeTests` (feliz/límite/error) |
 | RF-3.1–3.5 | `TypeHandlers.cs` (GetType) | `TypeHandlersGetTypeTests` (feliz/límite/error) |
-| RF-4.1–4.3 | `TypeHandlers.cs` (GetTypes) | `TypeHandlersGetTypesTests` (feliz/límite/error) |
+| RF-4.1–4.4 | `TypeHandlers.cs` (GetTypes) | `TypeHandlersGetTypesTests` (feliz/límite/error) |
 | RF-5.1–5.6 | `TypeHandlers.cs` (UpdateType) | `TypeHandlersUpdateTypeTests` (feliz/límite/error) |
 | RF-6.1–6.6 | `TypeHandlers.cs` (UpdateTypeVisibility), `CommonService` (existente) | `TypeHandlersUpdateTypeVisibilityTests` (feliz/límite/error) |
 | RF-7.1–7.3 | `TypeHandlers.cs` (GetTypesForSelects), `SelectService` (existente) | `TypeHandlersGetTypesForSelectsTests` (feliz/límite/error) |

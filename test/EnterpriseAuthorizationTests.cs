@@ -553,7 +553,6 @@ public class EnterpriseAuthorizationTests
     [Theory]
     [InlineData("/enterprise/", "POST", StatusCodes.Status201Created)]
     [InlineData("/enterprise/{id}", "GET", StatusCodes.Status200OK)]
-    [InlineData("/enterprises/", "GET", StatusCodes.Status200OK)]
     [InlineData("/enterprisesct/", "GET", StatusCodes.Status200OK)]
     public async Task ReadEndpoints_AcceptAnyAuthenticatedRole_Not403(string route, string method, int expectedStatusCode)
     {

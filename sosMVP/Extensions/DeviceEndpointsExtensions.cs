@@ -7,57 +7,56 @@ using SosMVP.Security;
 
 namespace SosMVP.Extensions;
 
-public static class EnterpriseEndpointsExtensions
+public static class DeviceEndpointsExtensions
 {
-    public static IEndpointRouteBuilder MapEnterpriseEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapDeviceEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // None of the four non admin routes are public; both groups demand a valid session so
-        // missing/expired token is answered as 401 by the authentication pipeline (RF-1.1, RF-1.2, RF-1.6, RF-1.7).
         var authenticatedEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization();
 
-        // Only PUT /enterprise/{id} and PUT /enterprisev/{id} require the admin role (RF-1.3, RF-1.4, RF-1.5).
         var adminEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization(AdminAuthorization.PolicyName);
 
-        authenticatedEndpoints.MapPost("/enterprise/", EnterpriseHandlers.InsertEnterpriseAsync)
+        authenticatedEndpoints.MapPost("/device/", DeviceHandlers.InsertDeviceAsync)
             .Produces(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status500InternalServerError)
-            .WithName("InsertEnterprise");
+            .WithName("InsertDevice");
 
-        authenticatedEndpoints.MapGet("/enterprise/{id}", EnterpriseHandlers.GetEnterpriseAsync)
-            .Produces<EnterpriseDTO>(StatusCodes.Status200OK)
+        authenticatedEndpoints.MapGet("/device/{id}", DeviceHandlers.GetDeviceAsync)
+            .Produces<DeviceDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound)
-            .WithName("GetEnterprise");
+            .WithName("GetDevice");
 
-        adminEndpoints.MapGet("/enterprises/", EnterpriseHandlers.GetEnterprisesAsync)
-            .Produces<IEnumerable<EnterpriseDTO>>(StatusCodes.Status200OK)
+        adminEndpoints.MapGet("/devicesent/{enterpriseId}", DeviceHandlers.GetDevicesByEnterpriseAsync)
+            .Produces<IEnumerable<DeviceDTO>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .WithName("GetEnterprises");
+            .WithName("GetDevicesByEnterprise");
 
-        adminEndpoints.MapPut("/enterprise/{id}", EnterpriseHandlers.UpdateEnterpriseAsync)
+        adminEndpoints.MapPut("/device/{id}", DeviceHandlers.UpdateDevicesAsync)
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
-            .WithName("UpdateEnterprise");
+            .WithName("UpdateDevices");
 
-        adminEndpoints.MapPut("/enterprisev/{id}", EnterpriseHandlers.UpdateEnterpriseVisibilityAsync)
+        adminEndpoints.MapPut("/devicev/{id}", DeviceHandlers.UpdateDevicesVisibilityAsync)
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
-            .WithName("UpdateEnterpriseVisibility");
+            .WithName("UpdateDevicesVisibility");
 
-        authenticatedEndpoints.MapGet("/enterprisesct/", EnterpriseHandlers.GetEnterprisesForSelectsAsync)
-            .Produces<IEnumerable<EnterpriseDTO>>(StatusCodes.Status200OK)
+        authenticatedEndpoints.MapGet("/devicesentsct/{enterpriseId}", DeviceHandlers.GetDevicesByEnterpriseForSelectAsync)
+            .Produces<IEnumerable<DeviceDTO>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
-            .WithName("GetEnterprisesForSelects");
+            .WithName("GetDevicesByEnterpriseForSelect");
 
         return endpoints;
     }

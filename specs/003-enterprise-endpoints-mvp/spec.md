@@ -13,7 +13,7 @@ El sistema SOS v6 administra **bitácoras** (órdenes de servicio registradas en
 
 Esta spec define el **caso de uso Empresa**: la capacidad de registrar (junto con su contacto inicial), consultar, listar, actualizar y cambiar la visibilidad de las empresas, además de obtener un listado reducido para *selects* de la interfaz.
 
-El objetivo es que **cualquier usuario autenticado** pueda consultar el catálogo de empresas (incluido el listado reducido para *selects* al asignar una empresa a un contacto o bitácora) y **crear una empresa con su contacto inicial** (`InsertEnterprise`), y que **únicamente un administrador autenticado** pueda **gobernar** dicho catálogo (modificar y habilitar/deshabilitar empresas mediante `UpdateEnterprise` y `UpdateEnterpriseVisibility`).
+El objetivo es que **cualquier usuario autenticado** pueda consultar una empresa individual (`GetEnterprise`), crear una empresa con su contacto inicial (`InsertEnterprise`) y obtener el listado reducido para *selects* (`GetEnterprisesForSelects`), y que **únicamente un administrador autenticado** pueda **gobernar** dicho catálogo (consultar el listado completo mediante `GetEnterprises`, modificar y habilitar/deshabilitar empresas mediante `UpdateEnterprise` y `UpdateEnterpriseVisibility`).
 
 **Por qué este caso de uso va después de Usuario y Tipo:** el control de acceso a los endpoints de Empresa depende de la sesión y el rol establecidos por el caso de uso Usuario (spec 001), y las empresas clasifican a los contactos que a su vez se usan en las bitácoras junto con los tipos (spec 002).
 
@@ -24,7 +24,7 @@ El objetivo es que **cualquier usuario autenticado** pueda consultar el catálog
 | Actor | Descripción | Puede hacer |
 |-------|-------------|-------------|
 | **Administrador** | Usuario con rol `admin`. Único autorizado a gobernar el catálogo de empresas. | Iniciar sesión (vía caso de uso Usuario), crear (empresa + contacto inicial), consultar, listar, actualizar y cambiar visibilidad de empresas. |
-| **Usuario operativo** | Usuario con un rol distinto de `admin`. Existe, puede autenticarse y consultar el catálogo. | Iniciar sesión, consultar una empresa, listar todas las empresas, listar empresas para selects. |
+| **Usuario operativo** | Usuario con un rol distinto de `admin`. Existe, puede autenticarse y consultar el catálogo. | Iniciar sesión, consultar una empresa, listar empresas para selects. |
 | **Consumidor de la API** | Cliente (aplicación o herramienta) que invoca los endpoints de esta spec. | Invocar los seis endpoints respetando el contrato de cada uno. |
 
 ---
@@ -37,7 +37,7 @@ El objetivo es que **cualquier usuario autenticado** pueda consultar el catálog
 
 ### HU-2 — Consultar el catálogo de empresas
 
-**Como** usuario operativo del sistema, **quiero** consultar una empresa por su identificador, listar todas las empresas existentes y obtener la lista reducida para selects, **para** poder seleccionar correctamente la empresa (y su contacto) al registrar una bitácora (orden de servicio), ya que la bitácora exige un contacto obligatorio que pertenece a una empresa, y el select de la interfaz se alimenta del endpoint reducido.
+**Como** usuario operativo del sistema, **quiero** consultar una empresa por su identificador y obtener la lista reducida para selects, **para** poder seleccionar correctamente la empresa (y su contacto) al registrar una bitácora (orden de servicio), ya que la bitácora exige un contacto obligatorio que pertenece a una empresa, y el select de la interfaz se alimenta del endpoint reducido.
 
 ### HU-3 — Proteger el catálogo de empresas
 
@@ -73,10 +73,9 @@ Todos los endpoints de esta spec **exigen sesión válida**.
 |---|------------------------|
 | RF-1.1 | Cuando una petición se dirige a cualquiera de los seis endpoints, el sistema verificará primero que la petición porta una sesión válida. |
 | RF-1.2 | Si una petición no porta sesión válida o su sesión ha expirado, entonces el sistema responderá con el código `401` y no ejecutará ninguna función del endpoint. |
-| RF-1.3 | Donde exista una sesión válida, el sistema comprobará **antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **solo para los endpoints `UpdateEnterprise` y `UpdateEnterpriseVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
-| RF-1.4 | Si el rol de la sesión no es `admin` **y el endpoint es `UpdateEnterprise` o `UpdateEnterpriseVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint. |
-| RF-1.5 | Si la comparación del rol no puede realizarse por una sesión corrupta o manipulada, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint. |
-| RF-1.6 | Para los endpoints `InsertEnterprise`, `GetEnterprise`, `GetEnterprises` y `GetEnterprisesForSelects`, **basta con una sesión válida (usuario autenticado)**; no se verifica el rol `admin`. |
+| RF-1.3 | Donde exista una sesión válida, el sistema comprobará **antes de ejecutar cualquier otra acción** que el rol de esa sesión sea `admin` **para los endpoints `GetEnterprises`, `UpdateEnterprise` y `UpdateEnterpriseVisibility`**. Ese rol es el leído de los `claims` emitidos en el login (spec 001) y es la única fuente que decide si el flujo del endpoint continúa. |
+| RF-1.4 | Si el rol de la sesión no es `admin` **y el endpoint es `GetEnterprises`, `UpdateEnterprise` o `UpdateEnterpriseVisibility`**, entonces el sistema responderá con el código `403` y no ejecutará ninguna función vital del endpoint. |
+| RF-1.6 | Para los endpoints `InsertEnterprise`, `GetEnterprise` y `GetEnterprisesForSelects`, **basta con una sesión válida (usuario autenticado)**; no se verifica el rol `admin`. |
 | RF-1.7 | Ningún endpoint de esta spec es público: todos exigen sesión válida. No existe equivalente a `login` en este caso de uso. |
 
 ### RF-2 — `InsertEnterprise` (POST `/enterprise/`)
@@ -109,14 +108,15 @@ Obtiene un registro de empresa. **No filtra por visibilidad**: devuelve `200` co
 
 ### RF-4 — `GetEnterprises` (GET `/enterprises/`)
 
-Obtiene **todos** los registros de empresas, **incluyendo los deshabilitados**. Esta decisión es coherente con la consulta de listado del catálogo, que no aplica filtro de visibilidad: el listado completo sirve para gobernar el catálogo de clientes, de ahí que exista un endpoint dedicado (`GetEnterprisesForSelects`) con solo las habilitadas para los selects.
+Obtiene **todos** los registros de empresas, **incluyendo los deshabilitados**. Esta decisión es coherente con la consulta de listado del catálogo, que no aplica filtro de visibilidad: el listado completo sirve para gobernar el catálogo de clientes, de ahí que exista un endpoint dedicado (`GetEnterprisesForSelects`) con solo las habilitadas para los selects. **Este endpoint es accesible únicamente para administradores autenticados.**
 
 | # | Criterio de aceptación |
 |---|------------------------|
-| RF-4.1 | Cuando un usuario autenticado invoque `GET /enterprises/`, el sistema devolverá el conjunto de **todos** los registros de empresas, independientemente de su `Visibility`. |
+| RF-4.1 | Cuando un **administrador autenticado** invoque `GET /enterprises/`, el sistema devolverá el conjunto de **todos** los registros de empresas, independientemente de su `Visibility`. |
 | RF-4.2 | El conjunto devuelto **incluirá** registros con `Visibility = DISABLED`, con independencia de su estado de visibilidad en el almacenamiento. |
 | RF-4.3 | Si no existe ninguna empresa registrada, entonces el sistema devolverá un conjunto vacío con el código `200`. |
 | RF-4.4 | La respuesta contiene únicamente `Id`, `CommercialName` y `TradeName` por cada empresa. Las propiedades no incluidas en este listado llegarán como `null` en el DTO y el consumidor no debe asumir que están presentes. |
+| RF-4.5 | Si un usuario autenticado **sin rol `admin`** invoque `GET /enterprises/`, el sistema responderá con el código `403` y no ejecutará ninguna función del endpoint. |
 
 ### RF-5 — `UpdateEnterprise` (PUT `/enterprise/{id}`)
 
@@ -184,7 +184,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 |----------|---------------|----------------------|
 | `InsertEnterprise` | `InsertEnterprise` | `201`, `400`, `401`, `500` |
 | `GetEnterprise` | `GetEnterprise` | `200`, `400`, `401`, `404` |
-| `GetEnterprises` | `GetEnterprises` | `200`, `401` |
+| `GetEnterprises` | `GetEnterprises` | `200`, `401`, `403` |
 | `UpdateEnterprise` | `UpdateEnterprise` | `204`, `400`, `401`, `403`, `404` |
 | `UpdateEnterpriseVisibility` | `UpdateEnterpriseVisibility` | `204`, `400`, `401`, `403`, `404` |
 | `GetEnterprisesForSelects` | `GetEnterprisesForSelects` | `200`, `401` |
@@ -192,7 +192,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 **Derivación:**
 - `201/204/200` son los códigos de éxito de RF-2.6, RF-5.5, RF-6.5, RF-3.2, RF-4.1, RF-7.1.
 - `401` aplica a **todos** por RF-1.2.
-- `403` aplica **solo** a `UpdateEnterprise` y `UpdateEnterpriseVisibility` por RF-1.4.
+- `403` aplica a `GetEnterprises`, `UpdateEnterprise` y `UpdateEnterpriseVisibility` por RF-1.4.
 - `400` aplica a todos los que validan `Id` numérico (RF-3.4, RF-5.6, RF-6.6), reglas de negocio de entidad (RF-2.4, RF-2.5, RF-5.4), `Visibility` (RF-6.3) o DTO inválido (RF-8.2/8.3).
 - `404` aplica a los que buscan por `Id` (RF-3.3, RF-5.3, RF-6.4).
 - `500` aplica solo a `InsertEnterprise` por conflicto de unicidad (RF-2.8).
@@ -230,7 +230,7 @@ Los seis endpoints deben exponer su contrato de respuestas documentado y su nomb
 | CE-6b | Existe al menos una empresa deshabilitada y se invoca `GET /enterprises/`. | El conjunto devuelto **incluye** el registro con `Visibility = DISABLED` (RF-4.2). |
 | CE-6c | Existe al menos una empresa deshabilitada y se invoca `GET /enterprisesct/`. | El conjunto devuelto **no incluye** el registro con `Visibility = DISABLED` (RF-7.2). |
 | CE-7 | Se invocan los seis endpoints sin sesión o con sesión expirada. | `401` y no se ejecuta ninguna función del endpoint. |
-| CE-8 | Se invocan `UpdateEnterprise` o `UpdateEnterpriseVisibility` con una sesión de rol distinto de `admin`. | `403` y no se ejecuta ninguna función del endpoint. |
+| CE-8 | Se invocan `GetEnterprises`, `UpdateEnterprise` o `UpdateEnterpriseVisibility` con una sesión de rol distinto de `admin`. | `403` y no se ejecuta ninguna función del endpoint. |
 | CE-9 | Se invocan `UpdateEnterprise` o `UpdateEnterpriseVisibility` con rol `admin`, pero la sesión está manipulada. | `403`. |
 | CE-10 | `GetEnterprise` devuelve una empresa con `Visibility = DISABLED`. | `200` con la empresa (no se filtra por visibilidad en consulta individual; decisión del usuario, opción A). |
 | CE-11 | El DTO de `InsertEnterprise` o `UpdateEnterprise` viola una regla de negocio (longitudes de campos). | `400` y no se escribe ningún dato. |
@@ -266,8 +266,8 @@ El caso de uso Empresa se considera concluido cuando:
 
 1. Los seis endpoints de la sección 4 están disponibles y responden conforme a su criterio de aceptación.
 2. Los seis endpoints rechazan con `401` las peticiones sin sesión válida o con sesión vencida.
-3. `UpdateEnterprise` y `UpdateEnterpriseVisibility` rechazan con `403` las peticiones cuyo `Role` de los `claims` no sea `admin`, sin ejecutar ninguna función del endpoint y sin consultar `Visibility` ni el almacén.
-4. `InsertEnterprise`, `GetEnterprise`, `GetEnterprises` y `GetEnterprisesForSelects` aceptan usuario autenticado (no exigen `admin`).
+3. `GetEnterprises`, `UpdateEnterprise` y `UpdateEnterpriseVisibility` rechazan con `403` las peticiones cuyo `Role` de los `claims` no sea `admin`, sin ejecutar ninguna función del endpoint y sin consultar `Visibility` ni el almacén.
+4. `InsertEnterprise`, `GetEnterprise` y `GetEnterprisesForSelects` aceptan usuario autenticado (no exigen `admin`).
 5. Un `Id` de ruta no numérico se rechaza con `400` en todos los endpoints que lo reciben.
 6. El `Id` del parámetro de ruta prevalece sobre el `Id` del cuerpo en `GetEnterprise`, `UpdateEnterprise` y `UpdateEnterpriseVisibility`.
 7. `UpdateEnterpriseVisibility` aplica únicamente el campo `Visibility` e ignora cualquier otra propiedad del DTO recibido.

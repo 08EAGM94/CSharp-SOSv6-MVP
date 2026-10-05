@@ -20,6 +20,8 @@ builder.Services.AddTypeModule();
 
 builder.Services.AddEnterpriseModule();
 
+builder.Services.AddDeviceModule();
+
 builder.Services.AddScoped<ApiExceptionHandler>();
 
 builder.Services
@@ -52,5 +54,7 @@ app.MapUserEndpoints();
 app.MapTypeEndpoints();
 
 app.MapEnterpriseEndpoints();
+
+app.MapDeviceEndpoints();
 
 app.Run();

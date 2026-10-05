@@ -76,4 +76,19 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddDeviceModule(this IServiceCollection services)
+    {
+        services.AddScoped<DeviceRepository>();
+        services.AddScoped<IByEnterpriseRepository<DeviceEntity, DeviceDTO>>(
+            provider => provider.GetRequiredService<DeviceRepository>());
+
+        services.AddScoped<IMapper<DeviceDTO, DeviceEntity>, DeviceDTOtoEntityMapper>();
+
+        services.AddScoped<EnterpriseChildrenService<DeviceEntity, DeviceDTO>>();
+        services.AddScoped<IEnterpriseChildrenService<DeviceDTO>>(
+            provider => provider.GetRequiredService<EnterpriseChildrenService<DeviceEntity, DeviceDTO>>());
+
+        return services;
+    }
 }

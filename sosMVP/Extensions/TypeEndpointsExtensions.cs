@@ -16,9 +16,9 @@ public static class TypeEndpointsExtensions
         // or expired (RF-1.1, RF-1.2, RF-1.7).
         var authenticatedEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization();
 
-        // Only the two write routes compare the role of the session, and they do it through the
-        // policy that already exists in AdminAuthorization, so a non admin or corrupted session ends
-        // in 403 without running any handler (RF-1.3, RF-1.4, RF-1.5).
+        // The three routes that govern the catalogue compare the role of the session, and they do it
+        // through the policy that already exists in AdminAuthorization, so a non admin or corrupted
+        // session ends in 403 without running any handler (RF-1.3, RF-1.4, RF-1.5, CE-8).
         var adminEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization(AdminAuthorization.PolicyName);
 
         // The response contract is declared on each endpoint, never on the group: Produces documents
@@ -38,9 +38,10 @@ public static class TypeEndpointsExtensions
             .Produces(StatusCodes.Status404NotFound)
             .WithName("GetType");
 
-        authenticatedEndpoints.MapGet("/type/", TypeHandlers.GetTypesAsync)
+        adminEndpoints.MapGet("/type/", TypeHandlers.GetTypesAsync)
             .Produces<IEnumerable<TypeDTO>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .WithName("GetTypes");
 
         adminEndpoints.MapPut("/type/{id}", TypeHandlers.UpdateTypeAsync)
