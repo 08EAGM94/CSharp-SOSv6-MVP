@@ -24,6 +24,8 @@ builder.Services.AddDeviceModule();
 
 builder.Services.AddContactModule();
 
+builder.Services.AddBinnacleModule();
+
 builder.Services.AddScoped<ApiExceptionHandler>();
 
 builder.Services
@@ -60,5 +62,7 @@ app.MapEnterpriseEndpoints();
 app.MapDeviceEndpoints();
 
 app.MapContactEndpoints();
+
+app.MapBinnacleEndpoints();
 
 app.Run();

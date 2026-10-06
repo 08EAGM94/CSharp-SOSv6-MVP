@@ -110,4 +110,17 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddBinnacleModule(this IServiceCollection services)
+    {
+        services.AddScoped<BinnacleRepository>();
+        services.AddScoped<IBinnacleRepository>(
+            provider => provider.GetRequiredService<BinnacleRepository>());
+
+        services.AddScoped<IMapper<BinnacleDTO, BinnacleEntity>, BinnacleDTOtoEntityMapper>();
+
+        services.AddScoped<IBinnacleService, BinnacleService>();
+
+        return services;
+    }
 }

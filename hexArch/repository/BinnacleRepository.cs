@@ -300,7 +300,7 @@ public class BinnacleRepository : IBinnacleRepository
     {
         PaginationResult paginationResult = new PaginationResult();
 
-        if (controllerAction == "followuplist")
+        if (controllerAction == "FollowupList")
         {
             int followupRegisters = await _dbContext.Bitacoras
                 .AsNoTracking()
@@ -341,7 +341,7 @@ public class BinnacleRepository : IBinnacleRepository
             };
         }
 
-        if (controllerAction == "binnaclesReport")
+        if (controllerAction == "BinnaclesReport")
         {
             int contactIdFilter = int.TryParse(binnFilter!["ContactId"], out int parsedContactId) ? parsedContactId : 0;
             int deviceIdFilter = int.TryParse(binnFilter["DeviceId"], out int parsedDeviceId) ? parsedDeviceId : 0;
@@ -358,7 +358,8 @@ public class BinnacleRepository : IBinnacleRepository
                     && bitacora.Estatus == binnFilter["Status"]
                     && (binnFilter["LeftDay"] == string.Empty
                         || (EF.Property<DateOnly>(bitacora, binnFilter["startedOrEnded"]) >= leftDay
-                            && EF.Property<DateOnly>(bitacora, binnFilter["startedOrEnded"]) <= rightDay)));
+                            && EF.Property<DateOnly>(bitacora, binnFilter["startedOrEnded"]) <= rightDay))
+                    && bitacora.Visibilidad == binnFilter["Visibility"]);
 
             List<BinnacleDTO> reportElements = await _dbContext.Bitacoras
                 .AsNoTracking()
@@ -373,7 +374,8 @@ public class BinnacleRepository : IBinnacleRepository
                     && source.bitacora.Estatus == binnFilter["Status"]
                     && (binnFilter["LeftDay"] == string.Empty
                         || (EF.Property<DateOnly>(source.bitacora, binnFilter["startedOrEnded"]) >= leftDay
-                            && EF.Property<DateOnly>(source.bitacora, binnFilter["startedOrEnded"]) <= rightDay)))
+                            && EF.Property<DateOnly>(source.bitacora, binnFilter["startedOrEnded"]) <= rightDay))
+                    && source.bitacora.Visibilidad == binnFilter["Visibility"])
                 .OrderBy(source => source.bitacora.Id)
                 .Skip((page!.Value - 1) * elemsKey!.Value)
                 .Take(elemsKey.Value)
@@ -534,6 +536,21 @@ public class BinnacleRepository : IBinnacleRepository
 
     public async Task FollowupPartialAsync(BinnacleEntity entity)
     {
+        BinnacleDTO binnacleInfo = await _dbContext.Bitacoras
+            .AsNoTracking()
+            .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
+            .Select(bitacora => new BinnacleDTO
+            {
+                Status = bitacora.Estatus
+            })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("No se encontró una bitácora con la información solicitada.");
+
+        if (binnacleInfo.Status != InProgressStatus)
+        {
+            throw new Exception("El acceso a esta bitácora está prohibido.");
+        }
+
         int updatedRows = await _dbContext.Bitacoras
             .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
             .ExecuteUpdateAsync(setters => setters
@@ -580,6 +597,21 @@ public class BinnacleRepository : IBinnacleRepository
 
     public async Task CancelBinnacleAsync(BinnacleEntity entity)
     {
+        BinnacleDTO binnacleInfo = await _dbContext.Bitacoras
+            .AsNoTracking()
+            .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
+            .Select(bitacora => new BinnacleDTO
+            {
+                Status = bitacora.Estatus
+            })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("No se encontró una bitácora con la información solicitada.");
+
+        if (binnacleInfo.Status == PendingConfirmStatus || binnacleInfo.Status == FinishedStatus)
+        {
+            throw new Exception("El acceso a esta bitácora está prohibido.");
+        }
+
         int updatedRows = await _dbContext.Bitacoras
             .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
             .ExecuteUpdateAsync(setters => setters
@@ -594,6 +626,21 @@ public class BinnacleRepository : IBinnacleRepository
 
     public async Task FinishBinnacleAsync(BinnacleEntity entity)
     {
+        BinnacleDTO binnacleInfo = await _dbContext.Bitacoras
+            .AsNoTracking()
+            .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
+            .Select(bitacora => new BinnacleDTO
+            {
+                Status = bitacora.Estatus
+            })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("No se encontró una bitácora con la información solicitada.");
+
+        if (binnacleInfo.Status != PendingConfirmStatus)
+        {
+            throw new Exception("El acceso a esta bitácora está prohibido.");
+        }
+
         int updatedRows = await _dbContext.Bitacoras
             .Where(bitacora => bitacora.Id == entity.Id && bitacora.UsuarioId == entity.UserId)
             .ExecuteUpdateAsync(setters => setters

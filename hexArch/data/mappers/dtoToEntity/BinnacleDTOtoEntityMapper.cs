@@ -17,7 +17,7 @@ public class BinnacleDTOtoEntityMapper : IMapper<BinnacleDTO, BinnacleEntity>
             DeviceId = obj.DeviceId,
             Amount = obj.Amount,
             ActivitiesDone = obj.ActivitiesDone,
-            Hints = obj.Hints,
+            Hints = obj.CancelDesc != null ? obj.CancelDesc : obj.Hints,
             CustomerSignature = obj.CustomerSignature,
             Status = obj.Status,
             StartingDate = obj.StartingDate,
