@@ -1,0 +1,370 @@
+### Variables (ajustables)
+@host = https://localhost:7104
+@httpHost = http://localhost:5010
+@token = your_token
+### 1. InsertUser (POST /user/) — requiere rol admin
+POST {{host}}/user/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Dummy Admin",
+  "surname": "Gutierrez Almanza",
+  "nickname": "AdminDummy2026",
+  "password": "ClaveSegura123!",
+  "role": "admin"
+}
+
+### 2. GetUser (GET /user/{id}) — requiere rol admin
+GET {{host}}/user/7
+Authorization: Bearer {{token}}
+
+### 3. GetUsers (GET /users/) — requiere rol admin
+GET {{host}}/users/
+Authorization: Bearer {{token}}
+
+### 4. UpdateUser (PUT /user/{id}) — requiere rol admin
+PUT {{host}}/user/8
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Juan Carlos",
+  "surname": "Pérez  González",
+  "nickname": "jcperez2026",
+  "password": "ClaveSegura123!",
+  "role": "admin"
+}
+
+### 5. UpdateUserVisibility (PUT /userv/{id}) — requiere rol admin
+PUT {{host}}/userv/3
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 6. Login (POST /login/) — público
+POST {{host}}/login/
+Content-Type: application/json
+
+{
+  "nickname": "jcperez2026",
+  "password": "ClaveSegura123!"
+}
+
+### 7. AdminVerification (POST /adminv/) — requiere rol admin
+POST {{host}}/adminv/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "adminNickname": "jcperez2026",
+  "adminPwd": "ClaveSegura123!"
+}
+
+### 8. InsertSignature (PUT /userisre/{id}) — requiere sesión
+PUT {{host}}/userisre/8
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "signature": "Juan Carlos Pérez González"
+}
+
+### 9. GetSignature (GET /usersre/{id}) — requiere sesión
+GET {{host}}/usersre/8
+Authorization: Bearer {{token}}
+
+### 10. InsertType (POST /type/) — requiere sesión
+POST {{host}}/type/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "REFRIGERACION"
+}
+
+### 11. GetType (GET /type/{id}) — requiere sesión
+GET {{host}}/type/1
+Authorization: Bearer {{token}}
+
+### 12. GetTypes (GET /type/) — requiere sesión
+GET {{host}}/type/
+Authorization: Bearer {{token}}
+
+### 13. UpdateType (PUT /type/{id}) — requiere rol admin
+PUT {{host}}/type/8
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "CLIMATIZACION"
+}
+
+### 14. UpdateTypeVisibility (PUT /typev/{id}) — requiere rol admin
+PUT {{host}}/typev/8
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 15. GetTypesForSelects (GET /typesct/) — requiere sesión
+GET {{host}}/typesct/
+Authorization: Bearer {{token}}
+
+### 16. InsertEnterprise (POST /enterprise/) — requiere sesión
+POST {{host}}/enterprise/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "enterprise": {
+    "commercialName": "Refrigeración Industrial del Norte",
+    "tradeName": "Refrinor",
+    "streetNumber": "Av. Reforma 222",
+    "betweenStreets": "Entre X y Y",
+    "contactingWith": "Juan Pérez",
+    "phones": "6641234567",
+    "schedule": "Lunes a Viernes 9:00 a 18:00",
+    "atention": "Atención técnica en sitio",
+    "neighborhood": "Centro",
+    "location": "Monterrey",
+    "email": "contacto@refrinor.com"
+  },
+  "contact": {
+    "fullName": "Juan Carlos Pérez González"
+  }
+}
+
+### 17. GetEnterprise (GET /enterprise/{id}) — requiere sesión
+GET {{host}}/enterprise/1
+Authorization: Bearer {{token}}
+
+### 18. GetEnterprises (GET /enterprises/) — requiere rol admin
+GET {{host}}/enterprises/
+Authorization: Bearer {{token}}
+
+### 19. UpdateEnterprise (PUT /enterprise/{id}) — requiere rol admin
+PUT {{host}}/enterprise/999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "commercialName": "Refrigeración Industrial del Norte S.A.",
+  "tradeName": "Refrinor",
+  "streetNumber": "Av. Reforma 222",
+  "betweenStreets": "Entre X y Y",
+  "contactingWith": "María López",
+  "phones": "6641234567",
+  "schedule": "Lunes a Viernes 8:00 a 19:00",
+  "atention": "Atención técnica en sitio",
+  "neighborhood": "Centro",
+  "location": "Monterrey",
+  "email": "contacto@refrinor.com"
+}
+
+### 20. UpdateEnterpriseVisibility (PUT /enterprisev/{id}) — requiere rol admin
+PUT {{host}}/enterprisev/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 21. GetEnterprisesForSelects (GET /enterprisesct/) — requiere sesión
+GET {{host}}/enterprisesct/
+Authorization: Bearer {{token}}
+
+### 22. InsertDevice (POST /device/) — requiere sesión
+POST {{host}}/device/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "enterpriseId": 1,
+  "typeId": 1,
+  "brand": "Carrier",
+  "model": "Xarios 5RTU",
+  "serialNumber": "CARRIER-X5-0001",
+  "inventoryNumber": 1001
+}
+
+### 23. GetDevice (GET /device/{id}) — requiere sesión
+GET {{host}}/device/1
+Authorization: Bearer {{token}}
+
+### 24. GetDevicesByEnterprise (GET /devicesent/{enterpriseId}) — requiere rol admin
+GET {{host}}/devicesent/1
+Authorization: Bearer {{token}}
+
+### 25. UpdateDevices (PUT /device/{id}) — requiere rol admin
+PUT {{host}}/device/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "enterpriseId": 1,
+  "typeId": 1,
+  "brand": "Carrier",
+  "model": "Xarios 5RTU Plus",
+  "serialNumber": "CARRIER-X5-0001",
+  "inventoryNumber": 1002
+}
+
+### 26. UpdateDevicesVisibility (PUT /devicev/{id}) — requiere rol admin
+PUT {{host}}/devicev/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 27. GetDevicesByEnterpriseForSelect (GET /devicesentsct/{enterpriseId}) — requiere sesión
+GET {{host}}/devicesentsct/1
+Authorization: Bearer {{token}}
+
+### 28. InsertContact (POST /contact/) — requiere sesión
+POST {{host}}/contact/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "enterpriseId": 1,
+  "fullName": "María López Hernández"
+}
+
+### 29. GetContact (GET /contact/{id}) — requiere sesión
+GET {{host}}/contact/1
+Authorization: Bearer {{token}}
+
+### 30. GetContactsByEnterprise (GET /contactsent/{enterpriseId}) — requiere rol admin
+GET {{host}}/contactsent/1
+Authorization: Bearer {{token}}
+
+### 31. GetContactsByEnterpriseForSelect (GET /contactsentsct/{enterpriseId}) — requiere sesión
+GET {{host}}/contactsentsct/1
+Authorization: Bearer {{token}}
+
+### 32. GetContactsForSelect (GET /contactsct/) — requiere rol admin
+GET {{host}}/contactsct/
+Authorization: Bearer {{token}}
+
+### 33. UpdateContact (PUT /contact/{id}) — requiere rol admin
+PUT {{host}}/contact/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "enterpriseId": 1,
+  "fullName": "María López Hernández"
+}
+
+### 34. UpdateContactVisibility (PUT /contactv/{id}) — requiere rol admin
+PUT {{host}}/contactv/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 35. InsertBinnacle (POST /binnacle/) — requiere sesión propiedades opcionales pero ambos validos: "service": "Mantenimiento preventivo de unidad condensadora", "deviceId": 1 
+POST {{host}}/binnacle/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contactId": 1,
+  "service": "Mantenimiento preventivo de unidad condensadora",
+  "deviceId": 1,
+  "amount": 1500.5
+}
+
+### 36. GetBinnacle (GET /binnacle/{id}) — requiere sesión
+GET {{host}}/binnacle/1
+Authorization: Bearer {{token}}
+
+### 37. FollowupList (GET /binnaclesfu/{page}/{elemsKey}) — requiere sesión
+GET {{host}}/binnaclesfu/1/5
+Authorization: Bearer {{token}}
+
+### 38. BinnaclesReport (POST /binnaclesr/) — requiere rol admin
+POST {{host}}/binnaclesr/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "page": 1,
+  "elemsKey": 5,
+  "binnFilter": {
+    "visibility": "ENABLED"
+  }
+}
+
+### 39. UpdateBinnacle (PUT /binnacle/{id}) — requiere rol admin
+PUT {{host}}/binnacle/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "status": "en proceso",
+  "service": "Mantenimiento preventivo de unidad condensadora",
+  "amount": 1500.5,
+  "activitiesDone": null,
+  "hints": null
+}
+
+### 40. UpdateBinnacleVisibility (PUT /binnaclev/{id}) — requiere rol admin
+PUT {{host}}/binnaclev/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "visibility": "DISABLED"
+}
+
+### 41. FollowupPartial (PUT /binnaclefup/{id}) — requiere sesión
+PUT {{host}}/binnaclefup/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "activitiesDone": "Se realizó diagnóstico y cambio de contactor",
+  "hints": "Se recomienda revisar el compressor en la próxima visita",
+  "startingDate": "2026-10-06"
+}
+
+### 42. ResetActivities (PUT /binnaclera/{id}) — requiere sesión (sin cuerpo)
+PUT {{host}}/binnaclera/1
+Authorization: Bearer {{token}}
+
+### 43. CancelBinnacle (PUT /binnaclecb/{id}) — requiere sesión
+PUT {{host}}/binnaclecb/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "cancelDesc": "El cliente canceló la orden por cambio de fecha"
+}
+
+### 44. FinishBinnacle (PUT /binnaclefsh/{id}) — requiere sesión
+PUT {{host}}/binnaclefsh/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": 999,
+  "customerSignature": "Juan Carlos Pérez González"
+}

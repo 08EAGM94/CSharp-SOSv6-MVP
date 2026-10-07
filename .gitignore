@@ -2,3 +2,6 @@
 bin/
 obj/
 .agents/
+docs/
+AGENTS.md
+prompts-plantillas.txt
