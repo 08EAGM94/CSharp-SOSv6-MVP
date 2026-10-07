@@ -3,7 +3,7 @@
 - **Spec que autoriza:** `specs/001-users-endpoints-mvp/spec.md`
 - **Constitucion:** `docs/constitution.md`
 - **Alcance de este documento:** COMO se implementa la spec. Cita los RF que autoriza cada decision.
-- **Estado:** sin bloqueantes. Los tres que se detectaron se resolvieron actualizando la spec (RNF-14, RF-2.5 y RF-8).
+- **Estado:** sin bloqueantes. Los tres que se detectaron se resolvieron actualizando la spec (RNF-14, RF-2.5 y RF-8). **Actualizado por el cambio de spec que anade `InsertSignature` (RF-10), `GetSignature` (RF-11) y el control de acceso de RF-1.8 (protegidos sin restriccion de rol).**
 
 ---
 
@@ -15,6 +15,10 @@
 | `CommonService<TEntity, TDTO>` | Implementa `ICommonService<TDTO>`. Props privadas: `_repository` (`IRepository<TEntity,TDTO>`), `_toEntityMapper` (`IMapper<TDTO,TEntity>`), `_toContactEntityMapper` (`IMapper<ContactDTO,ContactEntity>`) |
 | `IUserService` | `Login(UserDTO)` -> `Task<UserDTO>`, `AdminPwdConfirmation(UserDTO)` -> `bool` |
 | `UserService` | Implementa `IUserService`. Props privadas: `_repository` (`IUserRepository`), `_toEntityMapper` (`IMapper<UserDTO,UserEntity>`) |
+| `ISignatureService<TDTO>` | `InsertSignature(TDTO)` -> `Task` (void), `GetSignature(TDTO)` -> `Task<TDTO>`. Puerto primario ya implementado, **todavia sin registrar en DI ni consumido por ningun endpoint** |
+| `SignatureService<TEntity, TDTO>` | Implementa `ISignatureService<TDTO>`. Props privadas: `_repository` (`ISignatureRepository<TEntity,TDTO>`), `_toEntityMapper` (`IMapper<TDTO,TEntity>`) |
+| `ISignatureRepository<TEntity, TDTO>` | `InsertSignature(TEntity)` -> `Task`, `GetSignature(TEntity)` -> `Task<TDTO>` |
+| `UserRepository` (firma) | `InsertSignature`: `ExecuteUpdateAsync` que solo fija `Firma`; 0 filas afectadas -> `KeyNotFoundException`. `GetSignature`: proyecta **unicamente** `Signature`; sin coincidencia -> `KeyNotFoundException` |
 | `UserRepository` | Implementa `IRepository<UserEntity,UserDTO>`, `ISignatureRepository<...>`, `IUserRepository`. Prop privada: `_dbContext` (`Sosv6DbContext`) |
 | Excepciones de dominio | `EntityException`, `ApplicationException` (ambos heredan de `Exception`) |
 | Excepciones de repositorio | `KeyNotFoundException` (no encontrado), `Exception` (contrasena incorrecta), `DbUpdateException` (indice `uq_alias`) |
@@ -27,6 +31,7 @@
 | `sosMVP/appsettings.json` | Sin seccion `Jwt` ni seccion `ConnectionStrings`. Ambas se anaden (secciones 3.3 y 4.3) |
 | `test/` | Un solo archivo `TypeEntityTests.cs` con 3 tests de dominio. Sin referencia a `sosMVP.csproj` |
 | Enums | **No existe ningun `enum` en el proyecto**. `Role` y `Visibility` son `string` con literales `"admin"`, `"user"`, `"ENABLED"`, `"DISABLED"` |
+| Endpoints de firma | **No existen.** No hay delegados en `UserHandlers`, ni `Map*` en `UserEndpointsExtensions`, ni registro de `ISignatureService` en DI. Es exactamente lo que este plan anade (RF-10, RF-11, RF-1.8) |
 
 ---
 
@@ -96,6 +101,23 @@ Aportes del repositorio que satisfacen la spec sin tocarlo:
 
 El endpoint sigue validando que `AdminNickname` y `AdminPwd` lleguen informados antes de invocar el caso de uso, respondiendo `400` si no (CE-14d). La contrasena **nunca** se toma de los `claims`: RF-7.9 los excluye y RF-8.6 lo prohibe explicitamente.
 
+### 2.3 `SignatureService<UserEntity, UserDTO>` — endpoints `userisre/`, `usersre/`
+
+Se registra como `SignatureService<UserEntity, UserDTO>` implementando `ISignatureService<UserDTO>` (seccion 5). **No se modifica el caso de uso:** sus firmas ya satisfacen que `InsertSignature` es `void` (RF-10.6) y que `GetSignature` devuelve un `UserDTO` (RF-11.3).
+
+| Endpoint | Metodo del caso de uso | Retorno | RF que autoriza |
+| --- | --- | --- | --- |
+| `PUT userisre/{id}` | `InsertSignature(UserDTO dto)` | `Task` (void) | RF-10.1, RF-10.2, RF-10.6 |
+| `GET usersre/{id}` | `GetSignature(UserDTO dto)` | `Task<UserDTO>` | RF-11.1, RF-11.2, RF-11.3 |
+
+Comportamientos que ya aportan el mapper y el repositorio, sin tocarlos:
+
+- **`Id` y `Signature` llegan a la entidad:** `UserDTOtoEntityMapper` copia `Id = obj.Id` y `Signature = obj.Signature`; por eso el endpoint solo tiene que entregar un DTO con esos dos valores (RF-10.1, RF-10.2).
+- **Reglas de negocio de la firma:** `UserEntity.Signature` lanza `EntityException` con mas de 255 caracteres y `UserEntity.Id` lanza `EntityException` con un valor menor que 1; el `IExceptionHandler` los traduce a `400` (RF-10.5, CE-24).
+- **`404` de escritura:** `UserRepository.InsertSignature` lanza `KeyNotFoundException` cuando `ExecuteUpdateAsync` afecta 0 filas -> `404` (RF-10.4, CE-25).
+- **`404` de lectura:** `UserRepository.GetSignature` proyecta **solo** `Signature` y lanza `KeyNotFoundException` si el `Id` no existe -> `404` (RF-11.4, CE-25). Esa proyeccion parcial es la que hace que la respuesta contenga unicamente `Signature` (RF-11.3, CE-27).
+- **Sin filtro de visibilidad:** ninguna de las dos consultas aplica `Visibilidad`, de modo que un usuario `DISABLED` se escribe y se lee con normalidad (RF-10.8, RF-11.6, CE-26). No hay que tocar `hexArch/repository` (principio 5).
+
 ---
 
 ## 3. Sesiones con JWT (RF-1, RF-7, CE-7 a CE-10e)
@@ -114,10 +136,11 @@ El endpoint sigue validando que `AdminNickname` y `AdminPwd` lleguen informados 
 
 ### 3.2 Control de acceso (RF-1, RF-7.10)
 
-- Politica `AdminOnly` con `RequireClaim("Role", "admin")`, aplicada por el grupo de rutas protegidas.
-- `login` se declara **fuera** del grupo protegido (RF-1.7, RF-7.5).
+- Politica `AdminOnly` con `RequireClaim("Role", "admin")`, aplicada al grupo de los seis endpoints de administracion.
+- `login` se declara **fuera** de cualquier grupo protegido (RF-1.7, RF-7.5).
+- **`InsertSignature` y `GetSignature` van en un segundo grupo** `MapGroup(string.Empty).RequireAuthorization()` sin politica: la politica por defecto exige solo un usuario autenticado. Asi cumplen RF-1.1 y RF-1.2 (sesion valida, `401` si falta o vence) y RF-1.8 (ninguna comprobacion de rol, `403` solo por otros motivos), y CE-28 queda cubierto por construccion.
 - La autenticacion previa produce `401` por ausencia o expiracion de token (RF-1.1, RF-1.2, CE-7, CE-19).
-- La politica produce `403` por rol distinto de `admin` o por sesion sin claim de rol legible (RF-1.3, RF-1.4, RF-1.5, RF-1.6, CE-8, CE-9).
+- La politica `AdminOnly` produce `403` por rol distinto de `admin` o por sesion sin claim de rol legible, **solo en los seis endpoints que la exigen** (RF-1.3, RF-1.4, RF-1.5, RF-1.6, CE-8, CE-9).
 - El orden "sesion valida, luego rol" lo impone el propio pipeline de ASP.NET Core: `UseAuthentication()` antes de `UseAuthorization()`.
 
 **Alternativa descartada:** una clase `AdminFilter : IEndpointFilter`. Se descarto porque `AddAuthentication`/`AddAuthorization` ya resuelven el orden exigido por RF-1.3, y un filtro propio habria que replicar a mano la distincion `401`/`403` que la spec hace explicita.
@@ -134,7 +157,7 @@ Sobre el efecto de cambiar `Role` o `Visibility` con una sesion viva: la spec lo
 
 ## 4. Endpoints: metodo de extension con `IEndpointRouteBuilder`
 
-**Decision tecnica:** los siete endpoints se registran en una clase de extension `static` sobre `IEndpointRouteBuilder`, en `sosMVP/Extensions/UserEndpointsExtensions.cs`, expuesta como `app.MapUserEndpoints()`. `Program.cs` queda con las llamadas de composicion.
+**Decision tecnica:** los nueve endpoints se registran en una clase de extension `static` sobre `IEndpointRouteBuilder`, en `sosMVP/Extensions/UserEndpointsExtensions.cs`, expuesta como `app.MapUserEndpoints()`. `Program.cs` queda con las llamadas de composicion. Dentro se declaran **tres grupos**: el de administracion (`RequireAuthorization("AdminOnly")`, seis endpoints), el de sesion valida (`RequireAuthorization()` sin politica, los dos endpoints de firma, RF-1.8) y `login`, que queda fuera de grupo.
 
 **Por que** (decision tecnica, alternativa descartada): el SDK de minimal API ya provee `IEndpointRouteBuilder` como punto de extension estable (`Microsoft.AspNetCore.Routing`), con firmas en `RequestDelegate` generadas en tiempo de compilacion, que aportan de serie el binding de cuerpo JSON, el binding de `{id}` y la produccion de `400` automatico ante un cuerpo o ruta malformados. La alternativa descartada son controllers (`[ApiController]`): obligan a registrar un `AddControllers` y attributes, y rompen la coherencia con una base de codigo que ya es minimal API. Una tercera opcion descartada es escribir los `MapGet`/`MapPost` a mano en `Program.cs`, que es justo la saturacion que se quiere evitar.
 
@@ -150,6 +173,7 @@ builder.Services.AddScoped<IMapper<UserDTO, UserEntity>, UserDTOtoEntityMapper>(
 builder.Services.AddScoped<IMapper<ContactDTO, ContactEntity>, ContactDTOtoEntityMapper>()
 builder.Services.AddScoped<CommonService<UserEntity, UserDTO>>()
 builder.Services.AddScoped<ICommonService<UserDTO>>(sp => sp.GetRequiredService<CommonService<UserEntity, UserDTO>>())
+builder.Services.AddScoped<ISignatureService<UserDTO>, SignatureService<UserEntity, UserDTO>>()   // seccion 2.3
 builder.Services.AddAuthentication(JwtBearerDefaults...).AddJwtBearer(...)
 builder.Services.AddAuthorizationBuilder().AddPolicy("AdminOnly", ...)
 
@@ -165,6 +189,8 @@ Todos los registros son `scoped`, cumpliendo el principio 3. No hay un solo `new
 
 `AddScoped<CommonService<UserEntity, UserDTO>>()` requiere un tipo cerrado por `IRepository<UserEntity, UserDTO>`, que se registra explicitamente. El alias de interfaz se registra con una fabrica que resuelve **la misma instancia**, no una segunda, para que el endpoint y sus pruebas trabajen siempre contra un unico caso de uso por peticion.
 
+El registro de firma sigue el mismo patron dentro de `AddUserModule`: `ISignatureRepository<UserEntity, UserDTO>` se resuelve con una fabrica sobre la **misma** `UserRepository` ya registrada, y `ISignatureService<UserDTO>` apunta a `SignatureService<UserEntity, UserDTO>`. De ese modo el endpoint, el caso de uso y el repositorio comparten una unica instancia de `UserRepository` por peticion, y el `_toEntityMapper` que `SignatureService` necesita ya estaba registrado (RF-10, RF-11, RNF-2, principio 3).
+
 ### 4.2 Traduccion de excepciones a codigos HTTP (RF-9)
 
 Manejo centralizado en un `static IApplicationBuilder UseExceptionHandler(...)` con un `IExceptionHandler` registrado, en vez de `try/catch` repetido en cada endpoint. Traduce:
@@ -179,7 +205,7 @@ Manejo centralizado en un `static IApplicationBuilder UseExceptionHandler(...)` 
 
 El cuerpo es un mensaje en espanol (RF-9.6, RNF-6), tomado del `Message` de la excepcion, que el repositorio y el dominio ya redactan en espanol.
 
-**Por que** (decision tecnica, alternativa descartada): un filtro o middleware unico evita siete bloques `try/catch` identicos y garantiza que un caso de error nuevo no se olvide. Se descarta `try/catch` por endpoint: duplicaria la tabla de traduccion siete veces y cualquier divergencia entre endpoints violaria RF-9.
+**Por que** (decision tecnica, alternativa descartada): un filtro o middleware unico evita nueve bloques `try/catch` identicos y garantiza que un caso de error nuevo no se olvide. Se descarta `try/catch` por endpoint: duplicaria la tabla de traduccion nueve veces y cualquier divergencia entre endpoints violaria RF-9.
 
 `DbUpdateException` se discrimina por el codigo de error de SQL Server (2601 indice unico, 2627 restriccion unica) y por la presencia de `uq_alias`; el resto de `DbUpdateException` cae en `500` generico, nunca en `400`, para no enmascarar un fallo de infraestructura como un error del usuario.
 
@@ -244,27 +270,32 @@ La credencial no se versiona en claro: en un entorno real se sobreescribe con va
 | `PUT userv/{id}` | `UpdateAsyncVisibility(dto con Id de ruta)` | `204` sin cuerpo | RF-6.1 a RF-6.7, CE-2, CE-2b, CE-14c |
 | `POST login/` | `IUserService.Login(dto)` | `200` con el token | RF-7.0 a RF-7.11, RNF-12, RNF-13, RNF-14, CE-10c |
 | `POST adminv/` | `IUserService.AdminPwdConfirmation(dto)` | `200 {"confirmed":true}` / `403` | RF-8.0 a RF-8.6, CE-13, CE-14, CE-14b, CE-14d, CE-14e |
+| `PUT userisre/{id}` | `ISignatureService<UserDTO>.InsertSignature(dto con Id de ruta y solo Signature)` | `204` sin cuerpo | RF-10.1 a RF-10.8, RF-1.8, CE-1, CE-22 a CE-25, CE-28 |
+| `GET usersre/{id}` | `ISignatureService<UserDTO>.GetSignature(dto generado con Id de ruta)` | `200` con `SignatureResponse` | RF-11.1 a RF-11.6, RF-1.8, CE-25 a CE-27, CE-28 |
 
 Reglas transversales dentro de los delegados:
 
-- **Id de ruta gana al cuerpo** (RF-3.1, RF-5.1, RF-6.1, CE-1): el endpoint asigna `dto.Id = id` antes de invocar el caso de uso, sin leer el `Id` del cuerpo.
-- **`{id}` declarado como `int`**: una ruta no numerica produce `400` automatico del binding, cubriendo RF-3.4, RF-5.6, RF-6.6 y CE-18.
+- **Id de ruta gana al cuerpo** (RF-3.1, RF-5.1, RF-6.1, RF-10.1, CE-1): el endpoint asigna `dto.Id = id` antes de invocar el caso de uso, sin leer el `Id` del cuerpo.
+- **`{id}` declarado como `int`**: una ruta no numerica produce `400` automatico del binding, cubriendo RF-3.4, RF-5.6, RF-6.6, RF-10.7, RF-11.5 y CE-18.
 - **`UpdateUserVisibility` proyecta a un DTO nuevo** con solo `Id` y `Visibility` (RF-6.2, CE-2). No se reutiliza el DTO recibido, para que ninguna otra propiedad llegue al caso de uso.
+- **`InsertSignature` proyecta a un DTO nuevo** con solo `Id` (el de la ruta) y `Signature` (RF-10.1, RF-10.3, CE-22), por el mismo motivo que `UpdateUserVisibility`: si se reutilizara el DTO recibido, `UserDTOtoEntityMapper` llevaria el resto de propiedades a `UserEntity` y sus validadores dispararian `EntityException` -> `400` por campos que la spec manda ignorar.
+- **`GetSignature` genera el DTO** con `new UserDTO { Id = id }` y sin cuerpo de peticion (RF-11.1). El resultado se devuelve envuelto en `SignatureResponse(string? Signature)`, un record de la capa HTTP junto a `TokenResponse` y `AdminConfirmation`, porque el repositorio devuelve un `UserDTO` con el resto de propiedades en `null` y CE-27 exige que la respuesta contenga **unicamente** `Signature`.
 - **Auto-deshabilitacion** (RF-6.7, CE-14c): antes de invocar, se compara el `dto.Id` con el claim `Id` de la sesion; si coinciden y `Visibility` es `DISABLED`, se responde `403` sin tocar la base. La comparacion ocurre en la API porque es una regla de autorizacion, no de negocio de la entidad.
 - **`POST user/` valida `Role`** contra `{"admin", "user"}` antes de invocar (RF-2.6, RNF-11). Es un filtro explicito porque `UserEntity.Role` solo limita longitud.
 - **`POST adminv/` valida que `AdminNickname` y `AdminPwd` lleguen informados** (RF-8.5, CE-14d) y entrega el DTO sin transformar; el mapper ya resuelve la precedencia hacia `Nickname` y `Password`. No lee la contrasena de los `claims` (RF-8.6, CE-14e). Detalle en la seccion 2.2.
 - **`adminv/` sigue siendo un endpoint protegido** (RF-1.1 a RF-1.6): se declara dentro del grupo que exige la politica `AdminOnly`. La sesion acredita who invoca; el DTO aporta la contrasena. Solo `login` queda exento (RF-1.7).
-- **No se devuelven entidades:** los tres endpoints de escritura responden sin cuerpo (RF-2.4, RF-2.5, RF-5.5, RF-6.5, CE-2b).
+- **Los dos endpoints de firma exigen sesion pero no rol** (RF-1.1, RF-1.2, RF-1.8): van en el grupo con `.RequireAuthorization()` sin politica. Ningun delegado lee el claim de rol y ningun delegado devuelve `403` por rol (CE-28).
+- **No se devuelven entidades:** los cuatro endpoints de escritura responden sin cuerpo (RF-2.4, RF-2.5, RF-5.5, RF-6.5, RF-10.6, CE-2b).
 
 ### 4.6 Contrato de respuestas con `Produces` en cada endpoint
 
-**Decision tecnica:** cada uno de los siete `Map*` encadena `Produces` para declarar su contrato de respuestas. Sin esto, el SDK asume `200` generico y cualquier consumidor de la documentacion openAPI recibe una descripcion que contradice la spec.
+**Decision tecnica:** cada uno de los nueve `Map*` encadena `Produces` para declarar su contrato de respuestas. Sin esto, el SDK asume `200` generico y cualquier consumidor de la documentacion openAPI recibe una descripcion que contradice la spec.
 
 `Produces` es un metodo de extension sobre `IEndpointConventionBuilder` (`Microsoft.AspNetCore.Http`), asi que encadena directamente sobre el `RouteHandlerBuilder` que devuelven `MapGet`, `MapPost` y `MapPut`. La forma con cuerpo usa el tipo generico; la forma sin cuerpo usa la sobrecarga de solo codigo.
 
 #### 4.6.1 Declaracion por endpoint
 
-Cada linea declara los codigos que la spec asigna a ese endpoint, incluidos los que produce el pipeline de autenticacion y autorizacion (RF-1.1 a RF-1.6).
+Cada linea declara los codigos que la spec asigna a ese endpoint, incluidos los que produce el pipeline de autenticacion y autorizacion (RF-1.1 a RF-1.6). Los dos endpoints de firma declaran `401` pero **no** `403`, porque no exigen rol (RF-1.8).
 
 ```
 app.MapGet("/users/", UsersHandler)
@@ -282,13 +313,15 @@ app.MapGet("/users/", UsersHandler)
 | `PUT userv/{id}` | `.Produces(StatusCodes.Status204NoContent)` + `.Produces(400)` + `.Produces(401)` + `.Produces(403)` + `.Produces(404)` | `204` RF-6.5; `400` RF-6.3 y RF-6.6; `401`/`403` RF-1.2, RF-1.4 y RF-6.7; `404` RF-6.4 |
 | `POST login/` | `.Produces<TokenResponse>(StatusCodes.Status200OK)` + `.Produces(400)` + `.Produces(404)` | `200` RF-7.1; `400` RF-7.3; `404` RF-7.2. **Sin `401` ni `403`**: es el unico endpoint sin sesion previa (RF-1.7, RF-7.5) |
 | `POST adminv/` | `.Produces<AdminConfirmation>(StatusCodes.Status200OK)` + `.Produces(400)` + `.Produces(401)` + `.Produces(403)` + `.Produces(404)` | `200` RF-8.2; `400` RF-8.5; `401` RF-1.2; `403` RF-8.3 y RF-1.4; `404` RF-8.4 |
+| `PUT userisre/{id}` | `.Produces(StatusCodes.Status204NoContent)` + `.Produces(400)` + `.Produces(401)` + `.Produces(404)` | `204` RF-10.6; `400` RF-10.5 y RF-10.7; `401` RF-1.2; `404` RF-10.4. **Sin `403`**: no verifica rol (RF-1.8) |
+| `GET usersre/{id}` | `.Produces<SignatureResponse>(StatusCodes.Status200OK)` + `.Produces(400)` + `.Produces(401)` + `.Produces(404)` | `200` RF-11.3; `400` RF-11.5; `401` RF-1.2; `404` RF-11.4. **Sin `403`**: no verifica rol (RF-1.8) |
 
 #### 4.6.2 Reglas de uso
 
-- **Se declara en el endpoint, no en el grupo.** `Produces` aplicado sobre el `RouteGroupBuilder` se propaga a todas las rutas del grupo y les impondrá el mismo codigo, lo que contradice la spec (un grupo no puede ser `201` y `204` a la vez). El grupo protegido lleva solo `.RequireAuthorization(...)`.
-- **Los tres endpoints sin cuerpo no declaran tipo.** `POST user/`, `PUT user/{id}` y `PUT userv/{id}` usan la sobrecarga de solo codigo, porque la spec prohibe devolver cuerpo (RF-2.5, RF-5.5, RF-6.5). Declarar `Produces<AlgunaCosa>(201)` seria una contradiccion entre la documentacion y el comportamiento real.
+- **Se declara en el endpoint, no en el grupo.** `Produces` aplicado sobre el `RouteGroupBuilder` se propaga a todas las rutas del grupo y les impondrá el mismo codigo, lo que contradice la spec (un grupo no puede ser `201` y `204` a la vez). Cada grupo lleva solo `.RequireAuthorization(...)`.
+- **Los cuatro endpoints sin cuerpo no declaran tipo.** `POST user/`, `PUT user/{id}`, `PUT userv/{id}` y `PUT userisre/{id}` usan la sobrecarga de solo codigo, porque la spec prohibe devolver cuerpo (RF-2.5, RF-5.5, RF-6.5, RF-10.6). Declarar `Produces<AlgunaCosa>(201)` seria una contradiccion entre la documentacion y el comportamiento real.
 - **`Produces` no ejecuta nada.** Solo anade metadata `IProducesResponseTypeMetadata` al endpoint. El `401` y el `403` los sigue produciendo el middleware de autenticacion y autorizacion; declararlos en `Produces` documenta, no implementa.
-- **`401` y `403` se declaran tambien.** Es lo correcto: el consumidor ve que el endpoint exige sesion antes de invocarlo.
+- **`401` y `403` se declaran tambien.** Es lo correcto: el consumidor ve que el endpoint exige sesion antes de invocarlo. **Excepcion:** `PUT userisre/{id}` y `GET usersre/{id}` declaran `401` pero no `403`, porque su grupo no aplica ninguna politica de rol (RF-1.8, CE-28).
 - **`login` es la excepcion deliberada** y por eso su fila no lleva `401` ni `403`.
 - **`ProducesProblem` queda fuera.** Los errores se construyen a mano en `ExceptionHandlerExtensions` (seccion 4.2) con el mensaje en espanol (RNF-6), no como `ProblemDetails`. Anadir `ProducesProblem` declararia un `ProblemDetails` que la API nunca devuelve.
 
@@ -301,7 +334,7 @@ app.MapGet("/users/", UsersHandler)
 Por eso este plan **no anade el paquete**. `Produces` se declara igualmente, porque:
 
 1. La metadata queda en el `EndpointDataSource` y es consultable sin ningun paquete, lo que permite verificarla en un test (seccion 6.2).
-2. Si mas adelante se autoriza el paquete, el documento sale correcto sin tocar los siete endpoints.
+2. Si mas adelante se autoriza el paquete, el documento sale correcto sin tocar los nueve endpoints.
 
 Si quieres que la documentacion openAPI este disponible en el MVP, hace falta una RNF que autorice `Microsoft.AspNetCore.OpenApi` `10.0.0`; es un unico paquete del mismo framework, pero la constitucion no me deja anadirlo sin tu instruccion.
 
@@ -319,15 +352,15 @@ Esto elimina el bloqueante que se habia detectado: no hace falta tocar `hexArch/
 | `sosMVP/sosMVP.csproj` | modificar | Unico `PackageReference`: `Microsoft.AspNetCore.Authentication.JwtBearer` `10.0.0` | RNF-14, principio 1 |
 | `test/test.csproj` | modificar | Anadir `ProjectReference` a `sosMVP.csproj`; sin paquetes nuevos | Principio 4 |
 | `sosMVP/Program.cs` | modificar | Composicion de DI, autenticacion, autorizacion y una llamada a `MapUserEndpoints()` | Principio 3 |
-| `sosMVP/Extensions/UserEndpointsExtensions.cs` | crear | `static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder)` con los 7 `Map*`, cada uno encadenando su `Produces` (seccion 4.6) | Principios 1, 3 |
-| `sosMVP/Handlers/UserHandlers.cs` | crear | Delegados de los endpoints como metodos nombrados, con la logica de negocio de la capa HTTP | Principio 1 |
+| `sosMVP/Extensions/UserEndpointsExtensions.cs` | modificar | `static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder)` con los 9 `Map*` repartidos en tres grupos (admin, sesion valida y `login` suelto), cada uno encadenando su `Produces` (seccion 4.6) | Principios 1, 3, RF-1.8 |
+| `sosMVP/Handlers/UserHandlers.cs` | modificar | Delegados de los endpoints como metodos nombrados, con la logica de negocio de la capa HTTP; se anaden `InsertSignatureAsync`, `GetSignatureAsync` y el record `SignatureResponse` | Principio 1, RF-10, RF-11 |
 | `sosMVP/Extensions/ExceptionHandlerExtensions.cs` | crear | `UseExceptionHandler` y el `IExceptionHandler` de la tabla de RF-9 | Principios 1, 3 |
 | `sosMVP/Security/JwtOptions.cs` | crear | Clase de opciones de emision (issuer, audience, clave, minutos de vigencia) | Principio 6 |
 | `sosMVP/Security/JwtTokenFactory.cs` | crear | Firma del token y construccion de claims por lista de cierre | RF-7.8 a RF-7.11, RNF-12 |
-| `sosMVP/Security/AdminAuthorization.cs` | crear | Politica `AdminOnly` y lectura del claim de rol | RF-1.3 a RF-1.6 |
-| `sosMVP/Extensions/ServiceCollectionExtensions.cs` | crear | `AddUserModule()` con todos los `AddScoped` | Principios 1, 3 |
+| `sosMVP/Security/AdminAuthorization.cs` | crear | Politica `AdminOnly` (solo para los seis endpoints de administracion) y lectura de los claims de rol e `Id` | RF-1.3 a RF-1.6, RF-1.8 |
+| `sosMVP/Extensions/ServiceCollectionExtensions.cs` | crear | `AddUserModule()` con todos los `AddScoped`, incluidos `ISignatureRepository` (fabrica sobre `UserRepository`) e `ISignatureService<UserDTO>` | Principios 1, 3, RF-10, RF-11 |
 | `sosMVP/appsettings.json` | modificar | Secciones `Jwt` (issuer, audience, vigencia) y `ConnectionStrings` con la clave `Sosv6Db` | RNF-14, RNF-15 |
-| `test/` | crear archivos | Suites descritas en la seccion 6 | Principio 4 |
+| `test/` | crear archivos | Suites descritas en la seccion 6; `UserEndpointsMetadataTests` y `AdminAuthorizationTests` se amplian a las 9 rutas y al reparto de politicas | Principio 4 |
 | `hexArch/repository/**` | **no tocar** | Consultas existentes | Principio 5 |
 | `hexArch/data/Models/**` | modificar | Solo `Sosv6DbContext.OnConfiguring`: se retira la cadena fija. Autorizado por RNF-15 y seccion 4.3. `OnModelCreating` y `DbSet` intactos | Principio 5 |
 | `hexArch/application/**`, `hexArch/domain/**` | **no tocar** | Casos de uso y entidades ya satisfacen la spec | RNF-1 |
@@ -356,6 +389,9 @@ Ademas, `test/test.csproj` **no referencia `sosMVP.csproj`**. Anadir esa `Projec
 | `UserHandlersUpdateUserVisibilityTests` | `UserHandlers.UpdateUserVisibilityAsync` | RF-6.1 a RF-6.7, CE-2, CE-2b, CE-14c, CE-17 |
 | `UserHandlersLoginTests` | `UserHandlers.LoginAsync` + `JwtTokenFactory` | RF-7.0 a RF-7.11, RNF-12, CE-10, CE-11, CE-12, CE-10b, CE-10d, CE-10e |
 | `UserHandlersAdminVerificationTests` | `UserHandlers.AdminVerificationAsync` | RF-8.0 a RF-8.6, CE-13, CE-14, CE-14b, CE-14d, CE-14e |
+| `UserHandlersInsertSignatureTests` (nuevo) | `UserHandlers.InsertSignatureAsync` con `ISignatureService<UserDTO>` falso | RF-10.1 a RF-10.8, RF-1.8, CE-1, CE-22, CE-23, CE-24, CE-25 |
+| `UserHandlersGetSignatureTests` (nuevo) | `UserHandlers.GetSignatureAsync` con `ISignatureService<UserDTO>` falso | RF-11.1 a RF-11.6, RF-1.8, CE-25, CE-26, CE-27 |
+| `SignatureServiceTests` (nuevo) | `SignatureService<UserEntity, UserDTO>` con `ISignatureRepository` falso y `UserDTOtoEntityMapper` real | Delega en RF-10.2, RF-10.4, RF-10.5, RF-11.2, RF-11.3, RF-11.4 |
 | `AdminAuthorizationTests` | `AdminAuthorization` sobre un `ClaimsPrincipal` fabricado | RF-1.3 a RF-1.6, CE-8, CE-9 |
 | `JwtTokenFactoryTests` | Claims emitidos y expiracion | RF-7.7, RF-7.7b, RF-7.9, RF-7.11, RF-7.12, CE-19, CE-19b, CE-10b, CE-10e, CE-10f |
 | `ExceptionTranslationTests` | `IExceptionHandler` con cada excepcion | RF-9.1 a RF-9.6, CE-16 |
@@ -372,12 +408,20 @@ Cada endpoint necesita como minimo tres pruebas: camino feliz, caso limite y cas
   - **Feliz:** DTO con `Id` y `Visibility = "DISABLED"` -> `204`, y el caso de uso recibe solo esas dos propiedades (CE-2).
   - **Limite:** `Id` de la ruta que coincide con el claim de la sesion y `Visibility = "DISABLED"` -> `403`, y el caso de uso **no** es invocado (RF-6.7, CE-14c).
   - **Error:** el caso de uso lanza `KeyNotFoundException` -> el manejador la traduce a `404` (RF-6.4, CE-5).
+- `InsertSignatureAsync` (CE-22 a CE-25, RF-1.8):
+  - **Feliz:** `Signature` de 255 caracteres -> `204`, y el caso de uso recibe **solo** `Id` de la ruta y `Signature` (RF-10.1, RF-10.3, CE-22); si el cuerpo trae un `Id` distinto, gana el de la ruta (CE-1).
+  - **Limite:** `Signature` en `null` -> `204` y firma vacia, sin error (CE-23); `Signature` de 256 caracteres -> el caso de uso lanza `EntityException` -> `400` (RF-10.5, CE-24); `Id` de la ruta `0` o negativo -> `400` sin modificacion (RF-10.5).
+  - **Error:** el caso de uso lanza `KeyNotFoundException` -> `404` (RF-10.4, CE-25); `Id` no numerico en la ruta -> `400` automatico del binding (RF-10.7, CE-18). El delegado **nunca** lee el claim de rol ni responde `403` (RF-1.8, CE-28).
+- `GetSignatureAsync` (CE-25 a CE-27, RF-1.8):
+  - **Feliz:** el caso de uso devuelve `UserDTO { Id = 7, Signature = "abc" }` -> `200` cuyo cuerpo contiene **unicamente** la propiedad `Signature` (RF-11.3, CE-27), incluso si el usuario esta `DISABLED` (RF-11.6, CE-26).
+  - **Limite:** `Signature` almacenada en `null` -> `200` sin comprobacion extra (RF-11.2); el delegado genera el DTO solo con el `Id` de la ruta, porque la peticion no tiene cuerpo (RF-11.1).
+  - **Error:** el caso de uso lanza `KeyNotFoundException` -> `404` (RF-11.4, CE-25); `Id` no numerico en la ruta -> `400` automatico del binding (RF-11.5, CE-18). Sin `403` por rol (RF-1.8).
 
-Ademas, un test dedicado a la metadata de `Produces` (seccion 4.6): se construye el `EndpointDataSource` del servicio, se busca cada `RouteEndpoint` por su ruta y se comprueba que su metadata `IProducesResponseTypeMetadata` contenga exactamente los codigos de la tabla 4.6.1. Es posible sin anadir paquetes y sin generar el documento openAPI.
+Ademas, un test dedicado a la metadata de `Produces` (seccion 4.6): se construye el `EndpointDataSource` del servicio, se busca cada `RouteEndpoint` por su ruta y se comprueba que su metadata `IProducesResponseTypeMetadata` contenga exactamente los codigos de la tabla 4.6.1. Es posible sin anadir paquetes y sin generar el documento openAPI. Ese test declara ahora las **9 rutas** y verifica ademas el reparto de grupos: los seis de administracion dentro del grupo con `AdminOnly`, `PUT userisre/{id}` y `GET usersre/{id}` dentro de un grupo con `RequireAuthorization()` **sin** politica de rol (RF-1.8, CE-28), y `login` sin `RequireAuthorization` alguno (RF-1.7). `AdminAuthorizationTests` comprueba por separado que la politica `AdminOnly` sigue exigiendo el claim `Role = admin` (RF-1.3 a RF-1.6, CE-8, CE-9) y que la sesion sin rol legible produce `403` solo en ese grupo.
 
 ### 6.3 Doubles de prueba
 
-`test/Fakes/` con implementaciones de `IRepository<UserEntity, UserDTO>`, `IUserRepository` e `IMapper<,>` que registran las llamadas recibidas y devuelven valores programados. Se prefieren a un `InMemory` de EF Core porque `UpdateAsyncInfo` y `UpdateAsyncVisibility` del repositorio usan `ExecuteUpdateAsync`, que no es soportado por el proveedor en memoria; ademas, los fakes no tocan la base de datos real.
+`test/Fakes/` con implementaciones de `IRepository<UserEntity, UserDTO>`, `IUserRepository`, `ISignatureRepository<UserEntity, UserDTO>`, `ISignatureService<UserDTO>` e `IMapper<,>` que registran las llamadas recibidas y devuelven valores programados. Se prefieren a un `InMemory` de EF Core porque `UpdateAsyncInfo` y `UpdateAsyncVisibility` del repositorio usan `ExecuteUpdateAsync`, que no es soportado por el proveedor en memoria; ademas, los fakes no tocan la base de datos real.
 
 Cada test crea sus propios datos (criterio 17 de finalizacion), sin sembrado compartido.
 
@@ -390,6 +434,14 @@ Cada test crea sus propios datos (criterio 17 de finalizacion), sin sembrado com
 | RF-1.1, RF-1.2 | 3.2 (politica y autenticacion), 4.4 |
 | RF-1.3, RF-1.4, RF-1.5, RF-1.6 | 3.2, 4.1, suite `AdminAuthorizationTests` |
 | RF-1.7 | 3.2, 4.4 (`login` fuera del grupo protegido) |
+| RF-1.8 | 3.2 (grupo de sesion valida sin politica de rol), 4.4, 4.6.1 (sin `403`), suite `UserEndpointsMetadataTests` |
+| RF-10.1, RF-10.2, RF-10.3 | 2.3, 4.4 (proyeccion a solo `Id` y `Signature`), 6.1 (`UserHandlersInsertSignatureTests`) |
+| RF-10.4, RF-10.6 | 2.3 (`KeyNotFoundException` -> `404`, `void` -> `204`), 4.4, 4.6.1 |
+| RF-10.5 | 2.3 (`EntityException` -> `400`), 4.2, 6.1 (`SignatureServiceTests`) |
+| RF-10.7, RF-10.8 | 4.4 (`{id}` como `int`), 2.3 (sin filtro de visibilidad) |
+| RF-11.1, RF-11.2 | 2.3, 4.4 (DTO generado con el `Id` de la ruta) |
+| RF-11.3, RF-11.6 | 2.3 (proyeccion parcial del repositorio), 4.4 (`SignatureResponse`), 6.1 (`UserHandlersGetSignatureTests`) |
+| RF-11.4, RF-11.5 | 2.3 (`404`), 4.4 (`{id}` como `int`), 4.2 |
 | RF-2.1, RF-2.4 | 2.1, 4.4 |
 | RF-2.2 | 4.2 (`DbUpdateException` -> `500`) |
 | RF-2.3, RF-2.6 | 2.1, 4.4 (validacion de `Role`) |
@@ -445,6 +497,8 @@ Los tres bloqueantes detectados quedaron resueltos por actualizacion de la spec:
 
 **Ya no hay bloqueantes para empezar a implementar.**
 
+Los dos endpoints nuevos de la actualizacion de spec tampoco añaden bloqueantes: `SignatureService`, `ISignatureRepository` y las consultas de firma en `UserRepository` **ya estan implementados** en `hexArch/` (seccion 0), por lo que solo falta registrarlos en DI y exponerlos (secciones 4.1 y 4.4). La unica decision que ha quedado pendiente de explicitar —**la forma del cuerpo de `GET usersre/{id}`**— se resuelve en 4.4 y 4.6.1 con el record `SignatureResponse`, sin tocar el repositorio ni la serializacion global de `System.Text.Json` (CE-27).
+
 Ademas, estas dos dudas de la seccion 9 de la spec siguen abiertas y este plan las asume provisionalmente: comportamiento de `GetUser` ante un usuario `DISABLED` (asumido: lo devuelve, porque `GetAsyncInfo` no filtra por `Visibilidad` y el repositorio es inmodificable) y si el administrador puede editar su propio `Alias` o contrasena (asumido: si, no hay regla que lo impida y anadirla exigiria tocar el caso de uso o el repositorio). La duda sobre la vigencia de la sesion quedo resuelta en RF-7.7 y RF-7.7b.
 
 ---
@@ -455,13 +509,13 @@ Ademas, estas dos dudas de la seccion 9 de la spec siguen abiertas y este plan l
 2. Retirar la cadena fija de `Sosv6DbContext.OnConfiguring` y anadir `ConnectionStrings:Sosv6Db` a `appsettings.json`, autorizado por RNF-15.
 3. `sosMVP/Extensions/ServiceCollectionExtensions.cs` y `JwtOptions`.
 4. `sosMVP/Security/JwtTokenFactory.cs` y `AdminAuthorization.cs`.
-5. `sosMVP/Handlers/UserHandlers.cs` con los siete delegados.
-6. `sosMVP/Extensions/UserEndpointsExtensions.cs` con los siete `Map*` y su `Produces` en cada uno.
+5. `sosMVP/Handlers/UserHandlers.cs` con los nueve delegados, `TokenResponse`, `AdminConfirmation` y `SignatureResponse`.
+6. `sosMVP/Extensions/UserEndpointsExtensions.cs` con los nueve `Map*` en sus tres grupos y su `Produces` en cada uno.
 7. `sosMVP/Extensions/ExceptionHandlerExtensions.cs` con la tabla RF-9.
 8. Cableado final en `Program.cs`: lectura de la cadena con el builder, `AddDbContext` con `lambda`, autenticacion, autorizacion y seccion `Jwt` en `appsettings.json`.
 9. Anadir la `ProjectReference` a `sosMVP.csproj` en `test/test.csproj`.
-10. Suites de `test/` de la seccion 6.1, empezando por `AdminVerification` (precedencia `AdminNickname`/`AdminPwd`), `Login` (lista de cierre de claims) y `UpdateUserVisibility` (auto-deshabilitacion).
+10. Suites de `test/` de la seccion 6.1, empezando por `AdminVerification` (precedencia `AdminNickname`/`AdminPwd`), `Login` (lista de cierre de claims), `UpdateUserVisibility` (auto-deshabilitacion), `InsertSignature` y `GetSignature` (CE-22 a CE-28), cerrando con `UserEndpointsMetadataTests` (9 rutas, tres grupos, reparto de politicas) y `AdminAuthorizationTests` (RF-1.3 a RF-1.6, RF-1.8).
 11. `dotnet build` y `dotnet test` en verde.
 12. `dotnet list package` para confirmar el criterio de finalizacion 16 de la spec.
 13. Comprobar que el aviso del compilador sobre la cadena de conexion desaparecio (criterio 19 de la spec).
-14. Contrastar cada criterio de finalizacion (seccion 8 de la spec, 19 puntos) contra las pruebas escritas.
+14. Contrastar cada criterio de finalizacion (seccion 8 de la spec, 22 criterios) contra las pruebas escritas.

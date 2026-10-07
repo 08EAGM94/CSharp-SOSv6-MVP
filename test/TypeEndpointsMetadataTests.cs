@@ -61,6 +61,7 @@ public class TypeEndpointsMetadataTests
         builder.Logging.ClearProviders();
         builder.Services.AddScoped<ICommonService<UserDTO>>(_ => null!);
         builder.Services.AddScoped<IUserService>(_ => null!);
+        builder.Services.AddScoped<ISignatureService<UserDTO>>(_ => null!);
         builder.Services.AddSingleton(JwtTestTokens.Factory());
 
         var app = builder.Build();
@@ -270,7 +271,7 @@ public class TypeEndpointsMetadataTests
     {
         var userEndpoints = LazyUserEndpoints.Value;
 
-        Assert.Equal(7, userEndpoints.Count);
+        Assert.Equal(9, userEndpoints.Count);
 
         var login = userEndpoints.Single(endpoint => endpoint.RoutePattern.RawText == "/login/");
 

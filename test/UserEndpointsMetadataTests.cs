@@ -17,7 +17,7 @@ namespace test;
 
 /// <summary>
 /// Walks the EndpointDataSource and checks the response contract declared with Produces on each of
-/// the seven routes against table 4.6.1 of the plan. Both data sources produced by the group have to
+/// the nine routes against table 4.6.1 of the plan. Both data sources produced by the group have to
 /// be flattened, otherwise the endpoints of one of them are never inspected.
 /// </summary>
 public class UserEndpointsMetadataTests
@@ -32,7 +32,9 @@ public class UserEndpointsMetadataTests
         ("/user/{id}", "PUT", [204, 400, 401, 403, 404, 500]),
         ("/userv/{id}", "PUT", [204, 400, 401, 403, 404]),
         ("/login/", "POST", [200, 400, 404]),
-        ("/adminv/", "POST", [200, 400, 401, 403, 404])
+        ("/adminv/", "POST", [200, 400, 401, 403, 404]),
+        ("/userisre/{id}", "PUT", [204, 400, 401, 404]),
+        ("/usersre/{id}", "GET", [200, 400, 401, 404])
     ];
 
     private static IReadOnlyList<RouteEndpoint> MaterializeEndpoints()
@@ -41,6 +43,7 @@ public class UserEndpointsMetadataTests
         builder.Logging.ClearProviders();
         builder.Services.AddScoped<ICommonService<UserDTO>>(_ => null!);
         builder.Services.AddScoped<IUserService>(_ => null!);
+        builder.Services.AddScoped<ISignatureService<UserDTO>>(_ => null!);
         builder.Services.AddSingleton(JwtTestTokens.Factory());
 
         var app = builder.Build();
@@ -76,14 +79,36 @@ public class UserEndpointsMetadataTests
     }
 
     [Fact]
-    public void AllSevenRoutesAreDeclaredWithTheirExpectedMethods()
+    public void AllNineRoutesAreDeclaredWithTheirExpectedMethods()
     {
-        Assert.Equal(7, Endpoints().Count);
+        Assert.Equal(9, Endpoints().Count);
 
         foreach (var (route, method, _) in ExpectedContract)
         {
             Assert.True(Find(route, method) is not null, $"Falta el endpoint {method} {route}.");
         }
+    }
+
+    [Theory]
+    [InlineData("/userisre/{id}", "PUT", "InsertSignature")]
+    [InlineData("/usersre/{id}", "GET", "GetSignature")]
+    public void SignatureRoutes_DeclareTheirEndpointName(string route, string method, string expectedName)
+    {
+        var declaredName = Find(route, method).Metadata.GetMetadata<IEndpointNameMetadata>();
+
+        Assert.NotNull(declaredName);
+        Assert.Equal(expectedName, declaredName.EndpointName);
+    }
+
+    [Theory]
+    [InlineData("/userisre/{id}", "PUT")]
+    [InlineData("/usersre/{id}", "GET")]
+    public void SignatureRoutes_RequireASessionWithoutAnyRolePolicy(string route, string method)
+    {
+        var authorizeData = Find(route, method).Metadata.GetOrderedMetadata<IAuthorizeData>().ToList();
+
+        Assert.NotEmpty(authorizeData);
+        Assert.DoesNotContain(authorizeData, data => data.Policy is not null);
     }
 
     [Theory]
@@ -94,6 +119,8 @@ public class UserEndpointsMetadataTests
     [InlineData("/userv/{id}", "PUT")]
     [InlineData("/login/", "POST")]
     [InlineData("/adminv/", "POST")]
+    [InlineData("/userisre/{id}", "PUT")]
+    [InlineData("/usersre/{id}", "GET")]
     public void EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan(string route, string method)
     {
         var expected = ExpectedContract.Single(contract => contract.Route == route && contract.Method == method);
@@ -128,9 +155,13 @@ public class UserEndpointsMetadataTests
     }
 
     [Fact]
-    public void ProtectedRoutes_RequireTheAdminOnlyPolicy()
+    public void AdminRoutes_RequireTheAdminOnlyPolicy()
     {
-        foreach (var (route, method, _) in ExpectedContract.Where(contract => contract.Route != "/login/"))
+        var adminRoutes = ExpectedContract.Where(contract => contract.Route is not ("/login/" or "/userisre/{id}" or "/usersre/{id}"));
+
+        Assert.Equal(6, adminRoutes.Count());
+
+        foreach (var (route, method, _) in adminRoutes)
         {
             var authorizeData = Find(route, method).Metadata.GetOrderedMetadata<IAuthorizeData>().ToList();
 
@@ -149,6 +180,7 @@ public class UserEndpointsMetadataTests
     [InlineData("/user/", "POST")]
     [InlineData("/user/{id}", "PUT")]
     [InlineData("/userv/{id}", "PUT")]
+    [InlineData("/userisre/{id}", "PUT")]
     public void RoutesWithoutBody_DeclareNoResponseType(string route, string method)
     {
         var typedCodes = Find(route, method).Metadata
@@ -166,6 +198,7 @@ public class UserEndpointsMetadataTests
     [InlineData("/users/", "GET", typeof(IEnumerable<UserDTO>))]
     [InlineData("/login/", "POST", typeof(TokenResponse))]
     [InlineData("/adminv/", "POST", typeof(AdminConfirmation))]
+    [InlineData("/usersre/{id}", "GET", typeof(SignatureResponse))]
     public void RoutesWithBody_DeclareTheirResponseType(string route, string method, Type expectedType)
     {
         var declaredType = Assert.Single(Find(route, method).Metadata
@@ -192,6 +225,8 @@ public class UserEndpointsMetadataTests
     [InlineData(nameof(UserHandlers.GetUserAsync))]
     [InlineData(nameof(UserHandlers.UpdateUserAsync))]
     [InlineData(nameof(UserHandlers.UpdateUserVisibilityAsync))]
+    [InlineData(nameof(UserHandlers.InsertSignatureAsync))]
+    [InlineData(nameof(UserHandlers.GetSignatureAsync))]
     public void RoutesWithIdentifier_ReceiveItAsAnIntegerSoANonNumericValueIsRejected(string handlerName)
     {
         var identifier = Assert.Single(
@@ -207,6 +242,8 @@ public class UserEndpointsMetadataTests
     [InlineData("/user/{id}", "GET")]
     [InlineData("/user/{id}", "PUT")]
     [InlineData("/userv/{id}", "PUT")]
+    [InlineData("/userisre/{id}", "PUT")]
+    [InlineData("/usersre/{id}", "GET")]
     public void RoutesWithIdentifier_DeclareTheIdentifierAsARequiredRouteParameter(string route, string method)
     {
         var parameter = Assert.Single(Find(route, method).RoutePattern.Parameters, candidate => candidate.Name == "id");

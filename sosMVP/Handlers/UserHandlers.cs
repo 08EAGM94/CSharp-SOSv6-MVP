@@ -63,6 +63,23 @@ public static class UserHandlers
         return Results.NoContent();
     }
 
+    public static async Task<IResult> InsertSignatureAsync(
+        ISignatureService<UserDTO> signatureService,
+        int id,
+        UserDTO dto)
+    {
+        await signatureService.InsertSignature(new UserDTO { Id = id, Signature = dto.Signature });
+
+        return Results.NoContent();
+    }
+
+    public static async Task<IResult> GetSignatureAsync(ISignatureService<UserDTO> signatureService, int id)
+    {
+        var dto = await signatureService.GetSignature(new UserDTO { Id = id });
+
+        return Results.Ok(new SignatureResponse(dto.Signature));
+    }
+
     public static async Task<IResult> LoginAsync(IUserService userService, JwtTokenFactory tokenFactory, UserDTO dto)
     {
         var user = await userService.Login(dto);
@@ -92,3 +109,5 @@ public static class UserHandlers
 public sealed record TokenResponse(string Token);
 
 public sealed record AdminConfirmation(bool Confirmed);
+
+public sealed record SignatureResponse(string? Signature);

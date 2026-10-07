@@ -1,4 +1,11 @@
-# Tareas — Caso de Uso: Equipo (004-device-endpoints-mvp)
+# Tareas — Spec 004: Caso de uso Equipo
+
+- **Base:** `specs/004-device-endpoints-mvp/spec.md` + `specs/004-device-endpoints-mvp/plan.md`.
+- **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
+- **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
+- **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+
+---
 
 - [x] **T1. Crear DeviceHandlers.cs.** RF-2 a RF-7
   - Hecho cuando: `dotnet build` compila; 6 handlers estáticos async retornando `IResult`; binding correcto de `id`/`enterpriseId`; invocación a `IEnterpriseChildrenService<DeviceDTO>` según pseudocódigo del plan; `Results.Ok`/`NoContent`/`StatusCode(201)`.

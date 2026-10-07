@@ -13,6 +13,8 @@ public static class UserEndpointsExtensions
     {
         var adminEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization(AdminAuthorization.PolicyName);
 
+        var signatureEndpoints = endpoints.MapGroup(string.Empty).RequireAuthorization();
+
         adminEndpoints.MapPost("/user/", UserHandlers.InsertUserAsync)
             .Produces(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
@@ -65,6 +67,20 @@ public static class UserEndpointsExtensions
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .WithName("AdminVerification");
+
+        signatureEndpoints.MapPut("/userisre/{id}", UserHandlers.InsertSignatureAsync)
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("InsertSignature");
+
+        signatureEndpoints.MapGet("/usersre/{id}", UserHandlers.GetSignatureAsync)
+            .Produces<SignatureResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("GetSignature");
 
         return endpoints;
     }

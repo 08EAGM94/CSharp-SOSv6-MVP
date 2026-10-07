@@ -1,16 +1,9 @@
-# Tareas — Caso de Uso: Tipo
+# Tareas — Spec 002: Caso de uso Tipo
 
-- **Spec:** `specs/002-type-endpoints-mvp/spec.md`
-- **Plan:** `specs/002-type-endpoints-mvp/plan.md`
-- **Constitución:** `docs/constitution.md`
-- **Alcance:** QUIEN hace QUÉ, en orden de dependencia. Cada tarea dura entre 20 y 30 minutos.
-
-Reglas transversales que aplican a todas las tareas:
-- Ninguna tarea modifica `hexArch/repository/**` ni `hexArch/application/**` ni `hexArch/domain/**` (principios 2 y 5).
-- Solo `sosMVP/` y `test/` reciben código nuevo, salvo donde una tarea lo autoriza explícitamente.
-- Todo identificador y comentario en inglés; todo mensaje al usuario final en español (RNF-6).
-- Cada tarea termina con `dotnet build` en verde antes de marcarse.
-- **Tests primero (en rojo), luego código hasta verde** — cada tarea de handler incluye sus propios tests (camino feliz + caso límite + caso de error).
+- **Base:** `specs/002-type-endpoints-mvp/spec.md` + `specs/002-type-endpoints-mvp/plan.md`.
+- **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
+- **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
+- **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
 
 ---
 

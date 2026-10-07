@@ -20,6 +20,8 @@ public static class ServiceCollectionExtensions
             provider => provider.GetRequiredService<UserRepository>());
         services.AddScoped<IUserRepository>(
             provider => provider.GetRequiredService<UserRepository>());
+        services.AddScoped<ISignatureRepository<UserEntity, UserDTO>>(
+            provider => provider.GetRequiredService<UserRepository>());
 
         services.AddScoped<IMapper<UserDTO, UserEntity>, UserDTOtoEntityMapper>();
         services.AddScoped<IMapper<ContactDTO, ContactEntity>, ContactDTOtoEntityMapper>();
@@ -29,6 +31,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CommonService<UserEntity, UserDTO>>();
         services.AddScoped<ICommonService<UserDTO>>(
             provider => provider.GetRequiredService<CommonService<UserEntity, UserDTO>>());
+
+        services.AddScoped<ISignatureService<UserDTO>, SignatureService<UserEntity, UserDTO>>();
 
         services.AddScoped<JwtTokenFactory>();
 

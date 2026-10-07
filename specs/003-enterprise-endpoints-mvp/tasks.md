@@ -1,4 +1,11 @@
-# Tasks — Spec 003: Enterprise Endpoints MVP
+# Tareas — Spec 003: Caso de uso Empresa
+
+- **Base:** `specs/003-enterprise-endpoints-mvp/spec.md` + `specs/003-enterprise-endpoints-mvp/plan.md`.
+- **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
+- **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
+- **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+
+---
 
 - [X] **T1. Añadir `AddEnterpriseModule()` en `ServiceCollectionExtensions.cs`.** RF-2, RF-3, RF-4, RF-5, RF-6, RF-7, RNF-3
 

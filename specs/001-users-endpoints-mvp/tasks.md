@@ -1,16 +1,10 @@
-# Tareas — Caso de Uso: Usuario
+# Tareas — Spec 001: Caso de uso Usuario
 
-- **Spec:** `specs/001-users-endpoints-mvp/spec.md`
-- **Plan:** `specs/001-users-endpoints-mvp/plan.md`
-- **Constitucion:** `docs/constitution.md`
-- **Alcance:** QUIEN hace QUE, en orden de dependencia. Cada tarea dura entre 20 y 30 minutos.
-
-Reglas transversales que aplican a todas las tareas:
-
-- Ninguna tarea modifica `hexArch/repository/**` ni `hexArch/application/**` ni `hexArch/domain/**` (principios 2 y 5).
-- Solo `sosMVP/` y `test/` reciben codigo nuevo, salvo donde una tarea lo autoriza explicitamente.
-- Todo identificador y comentario en ingles; todo mensaje al usuario final en espanol (RNF-6).
-- Cada tarea termina con `dotnet build` en verde antes de marcarse.
+- **Base:** `specs/001-users-endpoints-mvp/spec.md` + `specs/001-users-endpoints-mvp/plan.md`.
+- **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
+- **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
+- **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+- **Nota de alcance:** las fases 0-8 corresponden al alcance original de la spec (siete endpoints, ya ejecutado). El cambio de spec que anade `InsertSignature` (RF-10), `GetSignature` (RF-11) y el control de acceso RF-1.8 se refleja en la **fase 9**, unica pendiente.
 
 ---
 
@@ -401,13 +395,13 @@ Reglas transversales que aplican a todas las tareas:
 
 ### T-29 Contraste contra los criterios de finalizacion
 
-- [X] Recorrer los 18 criterios de la seccion 8 de la spec y apuntar cada uno a su prueba.
+- [X] Recorrer los 18 criterios de la seccion 8 de la spec vigentes al cerrar la fase 8 (hoy la seccion 8 tiene 22: el cambio de spec anadio los criterios 20, 21 y 22 y renumero 8 a 19) y apuntar cada uno a su prueba.
 - [X] Confirmar que ninguna contrasena se persiste en texto plano: el hash lo aplica `PasswordHasher` dentro de `UserRepository`, que no se modifica.
 - [X] Ejecutar `dotnet build` y `dotnet test` en verde.
 
 **RF cubiertos:** RNF-10 y el resto de identificadores de la spec.
 
-**Hecho cuando:** los 18 criterios tienen una prueba o una comprobacion manual que los respalda, ninguna ruta de escritura guarda la contrasena sin hashear, y `dotnet test` no reporta fallos.
+**Hecho cuando:** los 18 criterios tienen una prueba o una comprobacion manual que los respalda, ninguna ruta de escritura guarda la contrasena sin hashear, y `dotnet test` no reporta fallos. El contraste de los criterios tocados por el cambio de spec se cierra en T-36.
 
 ---
 
@@ -415,25 +409,155 @@ Reglas transversales que aplican a todas las tareas:
 
 | #  | Criterio de la seccion 8                                              | Respaldo                                                                                                                                                                                                                                                                 |
 | -- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1  | Los siete endpoints responden conforme a su criterio                  | `test/UserHandlers*Tests.cs` (camino feliz de los siete) y `test/UserEndpointsMetadataTests.cs`                                                                                                                                                                      |
-| 2  | `401` en los seis protegidos sin sesion valida                      | `test/AdminAuthorizationTests.cs` y limitacion anotada en `test/JwtTokenFactoryTests.cs`: el `401` real lo emite el middleware y no se prueba sin `WebApplicationFactory`, que la constitucion prohibe                                                           |
-| 3  | `403` sin rol `admin`, sin ejecutar ni consultar                  | `test/AdminAuthorizationTests.cs` (rol `admin`, rol distinto, ausencia de claim, sesion corrupta)                                                                                                                                                                    |
-| 4  | `Id` de ruta no numerico devuelve `400`                           | pruebas de binding en`test/UserHandlersGetUserTests.cs`, `UpdateUser` y `UpdateUserVisibility`                                                                                                                                                                     |
-| 5  | El`Id` de ruta prevalece sobre el del cuerpo                        | `test/UserHandlersGetUserTests.cs`, `test/UserHandlersUpdateUserTests.cs`, `test/UserHandlersUpdateUserVisibilityTests.cs`                                                                                                                                         |
+| 1  | Los nueve endpoints responden conforme a su criterio                  | `test/UserHandlers*Tests.cs` (camino feliz de los nueve; los dos de firma en la fase 9) y `test/UserEndpointsMetadataTests.cs`                                                                                                                                                                      |
+| 2  | `401` en los ocho endpoints protegidos sin sesion valida                      | `test/AdminAuthorizationTests.cs` y limitacion anotada en `test/JwtTokenFactoryTests.cs`: el `401` real lo emite el middleware y no se prueba sin `WebApplicationFactory`, que la constitucion prohibe                                                           |
+| 3  | `403` sin rol `admin`, sin ejecutar ni consultar                  | `test/AdminAuthorizationTests.cs` (rol `admin`, rol distinto, ausencia de claim, sesion corrupta); las dos rutas de firma exigen sesion sin `403` por rol, comprobado en `test/UserEndpointsMetadataTests.cs` (fase 9)                                                                                                                                                                    |
+| 4  | `Id` de ruta no numerico devuelve `400`                           | reflexion sobre el parametro `int id` de cada handler en `test/UserEndpointsMetadataTests.cs` (`RoutesWithIdentifier_ReceiveItAsAnIntegerSoANonNumericValueIsRejected`, los cinco handlers de rutas `{id}`); la ruta `{id}` sin restriccion `:int` llega al enlace y devuelve `400` (decision de T-33, confirmada en T-36)                                                                                                                                                                     |
+| 5  | El`Id` de ruta prevalece sobre el del cuerpo                        | `test/UserHandlersGetUserTests.cs`, `test/UserHandlersUpdateUserTests.cs`, `test/UserHandlersUpdateUserVisibilityTests.cs`, `test/UserHandlersInsertSignatureTests.cs` (fase 9, CE-1)                                                                                                                                         |
 | 6  | Solo aplica`Visibility` y rechaza auto-deshabilitarse               | `test/UserHandlersUpdateUserVisibilityTests.cs` (limite y error)                                                                                                                                                                                                       |
 | 7  | `GetUsers` no devuelve `DISABLED`                                 | contrato del endpoint en`test/UserHandlersGetUsersTests.cs`; el filtro `Visibilidad == ENABLED` vive en `hexArch/repository/UserRepository.cs:66` y solo se ejerce contra base de datos real, prohibited por la constitucion                                       |
-| 8  | Los fallos se traducen a`404`/`400`/`500` en espanol            | `test/ExceptionTranslationTests.cs` y las pruebas de error de las siete suites                                                                                                                                                                                         |
-| 9  | Contrato completo de`login`                                         | `test/UserHandlersLoginTests.cs` (limite) y `test/JwtTokenFactoryTests.cs` (expiracion a 30 minutos sin renovacion)                                                                                                                                                  |
-| 10 | `Claims` por lista de cierre                                        | `test/JwtTokenFactoryTests.cs` (6 claims, sin `Password` ni `ConfPwd`; `Visibility` ausente)                                                                                                                                                                     |
-| 11 | `201`/`204`/`200` con y sin cuerpo                              | `test/UserEndpointsMetadataTests.cs` (tipo de cuerpo por endpoint) y las pruebas de respuesta de las siete suites                                                                                                                                                      |
-| 12 | Sin contrasenas ni texto plano ni credenciales por URL                | `test/PasswordHasherTests.cs` (nuevo) mas la comprobacion manual de `UserRepository`: las dos rutas de escritura hashean (lineas 28 y 85) y ninguna proyeccion de lectura expone `Contrasena`; `test/UserEndpointsMetadataTests.cs` descarta parametros de query |
-| 13 | `UpdateUserVisibility` solo propaga `Id` y `Visibility`         | `test/UserHandlersUpdateUserVisibilityTests.cs` y `test/CommonServiceUserTests.cs`                                                                                                                                                                                   |
-| 14 | `AdminVerification` por `POST`, cuerpo, sesion `admin`          | `test/UserHandlersAdminVerificationTests.cs` y `test/UserEndpointsMetadataTests.cs`                                                                                                                                                                                  |
-| 15 | `JwtBearer` como unico paquete                                      | T-28:`dotnet list package` por proyecto y en la solucion                                                                                                                                                                                                               |
-| 16 | Cada endpoint con limite y error, datos propios                       | siete suites en`test/`, sin sembrado compartido                                                                                                                                                                                                                        |
-| 17 | Compila y todas las pruebas pasan                                     | `dotnet build` con 0 errores y `dotnet test` con 197 pruebas en verde                                                                                                                                                                                                |
-| 18 | Sin cadena de conexion en el contexto y arranque fallido sin la clave | comprobacion manual:`hexArch/data/Models/Sosv6DbContext.cs` solo declara los dos constructores y no sobreescribe `OnConfiguring`; `sosMVP/Program.cs:10` lanza antes de `builder.Build()`                                                                        |
+| 8  | `GetUser` devuelve el registro aunque tenga `Visibility = DISABLED` (no filtra en consulta individual; `404` solo para ID inexistente) | `test/UserHandlersGetUserTests.cs` (el handler no filtra y traduce `KeyNotFoundException` a `404`); el filtro `Visibilidad == ENABLED` vive en `hexArch/repository/UserRepository.cs` y solo se ejerce contra base de datos real, prohibido por la constitucion |
+| 9  | Los fallos se traducen a`404`/`400`/`500` en espanol            | `test/ExceptionTranslationTests.cs` y las pruebas de error de las nueve suites                                                                                                                                                                                         |
+| 10 | Contrato completo de`login`                                         | `test/UserHandlersLoginTests.cs` (limite) y `test/JwtTokenFactoryTests.cs` (expiracion a 30 minutos sin renovacion)                                                                                                                                                  |
+| 11 | `Claims` por lista de cierre                                        | `test/JwtTokenFactoryTests.cs` (6 claims, sin `Password` ni `ConfPwd`; `Visibility` ausente)                                                                                                                                                                     |
+| 12 | `201`/`204`/`200` con y sin cuerpo                              | `test/UserEndpointsMetadataTests.cs` (tipo de cuerpo por endpoint) y nueve suites (los dos de firma en la fase 9)                                                                                                                                                      |
+| 13 | Sin contrasenas ni texto plano ni credenciales por URL                | `test/PasswordHasherTests.cs` (nuevo) mas la comprobacion manual de `UserRepository`: las dos rutas de escritura hashean (lineas 28 y 85) y ninguna proyeccion de lectura expone `Contrasena`; `test/UserEndpointsMetadataTests.cs` descarta parametros de query |
+| 14 | `UpdateUserVisibility` solo propaga `Id` y `Visibility`         | `test/UserHandlersUpdateUserVisibilityTests.cs` y `test/CommonServiceUserTests.cs`                                                                                                                                                                                   |
+| 15 | `AdminVerification` por `POST`, cuerpo, sesion `admin`          | `test/UserHandlersAdminVerificationTests.cs` y `test/UserEndpointsMetadataTests.cs`                                                                                                                                                                                  |
+| 16 | `JwtBearer` como unico paquete                                      | T-28:`dotnet list package` por proyecto y en la solucion                                                                                                                                                                                                               |
+| 17 | Cada endpoint con limite y error, datos propios                       | nueve suites en`test/` (los dos de firma en la fase 9), sin sembrado compartido                                                                                                                                                                                                                        |
+| 18 | Compila y todas las pruebas pasan                                     | `dotnet build` con 0 errores y `dotnet test` sin fallos (1033 pruebas al cerrar la fase 8)                                                                                                                                                                                                |
+| 19 | Sin cadena de conexion en el contexto y arranque fallido sin la clave | comprobacion manual:`hexArch/data/Models/Sosv6DbContext.cs` solo declara los dos constructores y no sobreescribe `OnConfiguring`; `sosMVP/Program.cs:10` lanza antes de `builder.Build()`                                                                        |
+
+| 20 | Un administrador puede editar su propia cuenta con `204`; la unica prohibicion es la autodeshabilitacion | `test/UserHandlersUpdateUserTests.cs` (camino feliz `204` sin comprobacion de rol propio) y CE-14c en `test/UserHandlersUpdateUserVisibilityTests.cs` |
+| 21 | `InsertSignature` por `PUT userisre/{id}`, sesion sin rol, `204` con solo `Id` y `Signature`, `404` y `400` | `test/UserHandlersInsertSignatureTests.cs`, `test/SignatureServiceTests.cs` y `test/UserEndpointsMetadataTests.cs` (fase 9, T-31 a T-35) |
+| 22 | `GetSignature` por `GET usersre/{id}`, sesion sin rol, `200` con cuerpo `Signature`, `404` y `400`, sin filtro de `Visibility` | `test/UserHandlersGetSignatureTests.cs`, `test/SignatureServiceTests.cs` y `test/UserEndpointsMetadataTests.cs` (fase 9, T-32 a T-35) |
+
+**Nota:** la numeracion sigue la seccion 8 de la spec tras el cambio de spec (22 criterios). Las celdas marcadas "fase 9" se confirmaron al cerrar T-36 (1079 pruebas).
 
 **Contrapruebas de regresion:** se mutaron temporalmente un codigo `Produces` y la auto-deshabilitacion para comprobar que las pruebas correspondientes fallan; ambas mutaciones se revirtieron.
 
 **Observacion sobre paquetes (T-28):** `dotnet list package --vulnerable` no reporta vulnerabilidades en ningun proyecto, pero `dotnet restore` emite avisos `NU1903` por `System.Security.Cryptography.Xml` 9.0.0. Llega de forma transitiva por `Microsoft.EntityFrameworkCore.Tools`, declarado en `hexArch/data/Data.csproj` antes de esta historia, y no de `JwtBearer`. Silenciarlo exigiria un `PackageReference` directo que la constitucion no autoriza sin actualizar antes la spec.
+
+---
+
+## Fase 9 — Endpoints de firma (RF-10, RF-11, RF-1.8)
+
+- **Estado:** completada.
+- **Origen:** cambio de spec que anade `InsertSignature` (PUT `userisre/{id}`), `GetSignature` (GET `usersre/{id}`) y el control de acceso RF-1.8 (sesion valida sin restriccion de rol). Los casos de uso y las consultas de firma **ya existen** en `hexArch/` (plan, seccion 0): la fase solo los registra, los expone y los prueba.
+- **TDD:** primero los tests de la tarea en rojo, despues el codigo. Una tarea, `dotnet build` y `dotnet test` en verde, y se PARA.
+
+---
+
+### T-30 Firma: DI y dobles de prueba
+
+- [X] Registrar en `AddUserModule` (`sosMVP/Extensions/ServiceCollectionExtensions.cs`): `ISignatureRepository<UserEntity, UserDTO>` con fabrica que resuelva la **misma** instancia de `UserRepository` ya registrada, e `ISignatureService<UserDTO>` -> `SignatureService<UserEntity, UserDTO>`, con ambito `scoped`.
+- [X] Anadir en `test/Fakes/` los dobles de `ISignatureService<UserDTO>` e `ISignatureRepository<UserEntity, UserDTO>` que registren la llamada recibida y devuelvan valores programados.
+- [X] No tocar `hexArch/repository` ni `hexArch/application` (principio 5, RNF-1).
+
+**RF cubiertos:** RF-10, RF-11, RNF-1, RNF-3.
+
+**Hecho cuando:** resolviendo `ISignatureService<UserDTO>` dentro de un ambito, el caso de uso recibe un `ISignatureRepository` que es la misma instancia de `UserRepository` del ambito, el doble de servicio permite leer el DTO exacto que recibe, y `dotnet test` sigue en verde.
+
+**Verificado (T-30):** `test/SignatureModuleRegistrationTests.cs` comprueba que el contenedor arranca con `ValidateOnBuild`, que los tres puertos de usuario resuelven la unica `UserRepository` del ambito, que `ISignatureService<UserDTO>` es `SignatureService<UserEntity, UserDTO>`, que su `_repository` es esa misma instancia, que los dos registros son `scoped` y que se recrean en cada ambito. `test/SignatureFakesTests.cs` cubre contratos, lectura del DTO/entidad exacta, resultado programado y fallo programado de ambos dobles. `dotnet build` con 0 errores y `dotnet test` con 1047 pruebas y 0 fallos.
+
+---
+
+### T-31 `UserHandlers`: delegate de `PUT userisre/{id}`
+
+- [X] Crear los tests rojos `test/UserHandlersInsertSignatureTests.cs` (camino feliz, caso limite y caso de error) y despues anadir `InsertSignatureAsync` en `sosMVP/Handlers/UserHandlers.cs`, que reciba `ISignatureService<UserDTO>`, el `Id` de ruta y el `UserDTO` del cuerpo.
+- [X] Proyectar un DTO nuevo con **solo** `Id` (el de la ruta) y `Signature`; ninguna otra propiedad del cuerpo llega al caso de uso.
+- [X] Invocar `InsertSignature` y responder `204` sin cuerpo; `Signature` en `null` tambien responde `204` (CE-23).
+- [X] No leer ningun claim de rol ni responder `403`: `KeyNotFoundException` y `EntityException` se propagan al manejador centralizado (`404` y `400`, RF-10.4 y RF-10.5).
+
+**RF cubiertos:** RF-10.1, RF-10.2, RF-10.3, RF-10.4, RF-10.5, RF-10.6, RF-1.8, CE-1, CE-22, CE-23, CE-24, CE-25.
+
+**Hecho cuando:** el camino feliz observa `204` y que el caso de uso recibio el `Id` de la ruta con la `Signature` del cuerpo y nada mas; un cuerpo con propiedades extra observa que se ignoran; `Signature = null` observa `204`; `KeyNotFoundException` y `EntityException` se propagan sin ser capturadas en el delegado; ningun test observa `403` ni consulta el rol.
+
+**Verificado (T-31):** 8 pruebas en `test/UserHandlersInsertSignatureTests.cs`: camino feliz `204` con firma de 255 caracteres; solo `Id` y `Signature` al caso de uso (el resto `null`, CE-22); `Id` de ruta gana al del cuerpo (CE-1); `Signature = null` -> `204`; reflexion sobre los parametros del delegado: no hay `ClaimsPrincipal`, luego no puede leer el rol ni devolver `403` (RF-1.8, CE-28); `KeyNotFoundException` -> `404`; `EntityException` por firma de 256 caracteres -> `400`; `Id` de ruta `0` -> `400`. TDD: rojo con 8 errores CS0117 antes de anadir el delegado. `dotnet build` con 0 errores y `dotnet test` con 1055 pruebas y 0 fallos.
+
+---
+
+### T-32 `UserHandlers`: delegate de `GET usersre/{id}` y `SignatureResponse`
+
+- [X] Crear los tests rojos `test/UserHandlersGetSignatureTests.cs` y despues anadir `GetSignatureAsync`, que reciba `ISignatureService<UserDTO>` y el `Id` de ruta; la peticion no tiene cuerpo, asi que el DTO se genera con `new UserDTO { Id = id }`.
+- [X] Anadir el record `SignatureResponse(string? Signature)` en `sosMVP/Handlers/UserHandlers.cs`, junto a `TokenResponse` y `AdminConfirmation`, y devolver `200` con `new SignatureResponse(dto.Signature)`: el cuerpo contiene **unicamente** la propiedad `Signature`.
+- [X] No filtrar por `Visibility` ni leer el rol: el usuario `DISABLED` responde `200` (CE-26) y `KeyNotFoundException` se propaga (RF-11.4 -> `404`).
+
+**RF cubiertos:** RF-11.1, RF-11.2, RF-11.3, RF-11.4, RF-11.6, RF-1.8, CE-25, CE-26, CE-27.
+
+**Hecho cuando:** el caso de uso recibe un DTO cuya unica propiedad informada es el `Id` de ruta; el cuerpo del `200` serializado solo contiene `Signature`; un usuario `DISABLED` responde `200`; `KeyNotFoundException` se propaga; ningun test observa `403`.
+
+**Verificado (T-32):** 6 pruebas en `test/UserHandlersGetSignatureTests.cs`: el `200` serializa exactamente una propiedad `signature` (CE-27); el DTO recibido solo lleva el `Id` de ruta, todo lo demas `null` (RF-11.1); resultado con `Visibility = DISABLED` sigue respondiendo `200` (CE-26); firma almacenada en `null` responde `200` con `{"signature":null}` (RF-11.2); reflexion sobre los parametros: sin `ClaimsPrincipal`, luego sin `403` (RF-1.8); `KeyNotFoundException` se propaga y se traduce a `404` (RF-11.4, CE-25). TDD: rojo con 6 errores CS0117 antes de anadir el delegado. `dotnet build` con 0 errores y `dotnet test` con 1061 pruebas y 0 fallos.
+
+---
+
+### T-33 Registro de los dos endpoints en `MapUserEndpoints`
+
+- [x] Declarar un segundo grupo `MapGroup(string.Empty).RequireAuthorization()` **sin politica**, para las dos rutas de firma, separado del grupo `AdminOnly` y de `login` (RF-1.8).
+- [x] `MapPut("userisre/{id:int}", ...)` con `InsertSignatureAsync` y `.WithName("InsertSignature")`: `.Produces(204)` + `.Produces(400)` + `.Produces(401)` + `.Produces(404)`, **sin `403`** y con la sobrecarga de solo codigo (sin cuerpo).
+- [x] `MapGet("usersre/{id:int}", ...)` con `GetSignatureAsync` y `.WithName("GetSignature")`: `.Produces<SignatureResponse>(200)` + `.Produces(400)` + `.Produces(401)` + `.Produces(404)`, **sin `403`**.
+- [x] No declarar `Produces` sobre ningun grupo.
+
+**RF cubiertos:** RF-10.6, RF-11.3, RF-1.8, RNF-8, RNF-9, CE-28.
+
+**Hecho cuando:** el `EndpointDataSource` expone las nueve rutas; las dos de firma estan en el grupo con `RequireAuthorization()` sin `Policy`, las seis de administracion siguen en `AdminOnly` y `login` sigue sin `RequireAuthorization`.
+
+**Verificado (T-33):** segundo grupo `signatureEndpoints = MapGroup(string.Empty).RequireAuthorization()` sin politica (mismo patron que `ContactEndpointsExtensions`), `MapPut /userisre/{id}` con `InsertSignatureAsync` y `MapGet /usersre/{id}` con `GetSignatureAsync`, ambos con `Produces` sin `403` y sin `Produces` en los grupos. Pruebas en `test/UserEndpointsMetadataTests.cs`: `AllNineRoutesAreDeclaredWithTheirExpectedMethods` (nueve rutas), `SignatureRoutes_DeclareTheirEndpointName` (`InsertSignature`/`GetSignature`) y `SignatureRoutes_RequireASessionWithoutAnyRolePolicy` (`IAuthorizeData` sin `Policy`); ademas `test/TypeEndpointsMetadataTests.UserEndpointsMetadataRemainIntact` actualizado a nueve. **Decision aprobada:** se uso `{id}` sin restriccion de ruta en lugar de `{id:int}` literal del texto de la tarea, porque `:int` daria `404` (no `400`) para ids no numericos, violando RF-10.7/RF-11.5/CE-18 y el patron de las 40 rutas existentes. TDD: rojo con 6 fallos (7≠9 + rutas inexistentes) antes de implementar. `dotnet build` con 0 errores y `dotnet test` con 1065 pruebas y 0 fallos.
+
+---
+
+### T-34 Ampliar la metadata de `Produces` y el reparto de politicas
+
+- [x] Ampliar `test/UserEndpointsMetadataTests.cs` a las nueve rutas con los codigos exactos de la tabla 4.6.1 del plan: las dos de firma **sin `403`**, `userisre/{id}` sin cuerpo y `usersre/{id}` con tipo `SignatureResponse`.
+- [x] Comprobar el reparto de politicas: seis rutas con `Policy = AdminOnly`, dos de firma con `RequireAuthorization()` sin `Policy`, `login` sin `IAuthorizeData`.
+- [x] Dejar intactas las pruebas de `test/AdminAuthorizationTests.cs`: la politica `AdminOnly` sigue exigiendo `Role = admin`.
+
+**RF cubiertos:** RF-1.1, RF-1.2, RF-1.3, RF-1.7, RF-1.8, RF-10.6, RF-11.3, RNF-8, RNF-9, CE-7, CE-28.
+
+**Hecho cuando:** la metadata de los nueve endpoints coincide exactamente con la tabla 4.6.1 del plan, `userisre/{id}` y `usersre/{id}` no llevan `IAuthorizeData` con `Policy`, `login` sigue sin `401` ni `403`, y las seis rutas de administracion conservan `AdminOnly`.
+
+**Verificado (T-34):** `ExpectedContract` ampliado a las nueve filas de la tabla 4.6.1 (firma: `PUT [204,400,401,404]`, `GET [200,400,401,404]`, sin `403`); `EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan` con las dos rutas nuevas; `RoutesWithoutBody_DeclareNoResponseType` incluye `userisre/{id}` (solo codigo, sin cuerpo) y `RoutesWithBody_DeclareTheirResponseType` incluye `usersre/{id}` con `SignatureResponse` (CE-27); reparto de politicas explicito en `AdminRoutes_RequireTheAdminOnlyPolicy` (seis rutas con `Assert.Equal(6, ...)` y `Policy = AdminOnly`), firma sin `Policy` (`SignatureRoutes_RequireASessionWithoutAnyRolePolicy`) y `login` sin `IAuthorizeData` (`Login_RequiresNoAuthorizationAtAll`); `test/AdminAuthorizationTests.cs` sin cambios y en verde. TDD: rojo con 1 fallo (`ProtectedRoutes_RequireTheAdminOnlyPolicy` iteraba las rutas de firma) antes de reescribir el reparto. `dotnet build` con 0 errores y `dotnet test` con 1069 pruebas y 0 fallos.
+
+---
+
+### T-35 Pruebas de delegacion de `SignatureService`
+
+- [x] Crear `test/SignatureServiceTests.cs` con `ISignatureRepository` falso y `UserDTOtoEntityMapper` **real**.
+- [x] Cubrir que `Signature` de mas de 255 caracteres o `Id` menor que 1 lanzan `EntityException` durante el mapeo (RF-10.5, CE-24).
+- [x] Cubrir que la `KeyNotFoundException` del repositorio se propaga en escritura y en lectura (RF-10.4, RF-11.4, CE-25), y que `GetSignature` devuelve el DTO con la firma (RF-11.2, RF-11.3).
+
+**RF cubiertos:** RF-10.2, RF-10.4, RF-10.5, RF-11.2, RF-11.4, CE-24, CE-25.
+
+**Hecho cuando:** las comprobaciones pasan, la suite no abre ninguna conexion a la base de datos y `hexArch/repository` no se ha modificado.
+
+**Verificado (T-35):** creado `test/SignatureServiceTests.cs` con 6 pruebas y `FakeSignatureRepository` + `UserDTOtoEntityMapper` real: delegacion de `InsertSignature` con entidad mapeada solo con `Id` y `Signature` (RF-10.2); `EntityException` por firma de 256 caracteres y por `Id = 0` durante el mapeo sin alcanzar el repositorio (RF-10.5, CE-24); `KeyNotFoundException` propagada en escritura y lectura (RF-10.4, RF-11.4, CE-25); `GetSignature` devuelve el DTO con `Signature` almacenada y delega el `Id` mapeado (RF-11.2, RF-11.3). Sin codigo de production, sin conexion a BD y `hexArch/repository` intacto. Fase roja no aplica (tarea solo de pruebas sobre implementacion existente; las 6 pasan a la primera). `dotnet build` con 0 errores y `dotnet test` con 1075 pruebas y 0 fallos.
+
+---
+
+### T-36 Cierre de la fase 9: contraste y verificacion
+
+- [x] Contrastar los criterios de finalizacion tocados por el cambio de spec (1, 2, 3, 4, 5, 12, 17, 18, 21 y 22) contra las pruebas de la fase 9 y confirmar la tabla de contraste de T-29.
+- [x] Ejecutar `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+- [x] Confirmar con `dotnet list package` que la fase 9 no ha anadido ningun paquete.
+
+**RF cubiertos:** RF-1.1 a RF-1.8, RF-10, RF-11, RNF-14.
+
+**Hecho cuando:** los 22 criterios de la seccion 8 de la spec tienen una prueba o una comprobacion que los respalda, no hay paquetes nuevos y `dotnet test` no reporta fallos.
+
+**Verificado (T-36):** contraste de los 10 criterios tocados por el cambio de spec:
+
+| # | Criterio | Respaldo de la fase 9 |
+| --- | --- | --- |
+| 1 | Nueve endpoints conforme a su criterio | nueve suites `test/UserHandlers*Tests.cs` (los dos de firma en T-31/T-32) + `test/UserEndpointsMetadataTests.cs` (nueve rutas) |
+| 2 | `401` en los ocho protegidos sin sesion | ocho rutas con `RequireAuthorization` (6 `AdminOnly` + 2 firma) en `UserEndpointsMetadataTests.cs`; limitacion anotada ya en T-29 (el `401` real lo emite el middleware) |
+| 3 | `403` sin rol `admin`; firma sin `403` por rol | `test/AdminAuthorizationTests.cs` intacto + `SignatureRoutes_RequireASessionWithoutAnyRolePolicy` y códigos exactos sin `403` (T-34) |
+| 4 | `Id` no numerico -> `400` | **hueco cerrado en T-36**: reflexion `int id` ampliada a `InsertSignatureAsync` y `GetSignatureAsync`, y ruta requerida `{id}` anadida a las dos rutas de firma (4 casos nuevos); fila 4 de la tabla T-29 corregida de `{id:int}` a `{id}` |
+| 5 | `Id` de ruta prevalece sobre el del cuerpo | `RouteId_OverridesTheIdOfTheBody` en `UserHandlersInsertSignatureTests.cs` (+ los tres de admin ya en T-29) |
+| 12 | `204`/`200` con y sin cuerpo | tabla 4.6.1 verificada en T-34: `userisre` `204` sin tipo, `usersre` `200` con `SignatureResponse` |
+| 17 | Limite y error con datos propios | `UserHandlersInsertSignatureTests.cs` (7: firma de 256 -> `400`, `Id` 0 -> `400`, `404`, delegado sin sesion) y `UserHandlersGetSignatureTests.cs` (6: `DISABLED` -> `200`, firma nula -> `200`, `404`, delegado sin sesion); `test/SignatureServiceTests.cs` (6) sin datos compartidos |
+| 18 | Compila y pruebas pasan | `dotnet build` 0 errores; `dotnet test test/test.csproj` -> 1079 pruebas, 0 fallos |
+| 21 | `InsertSignature` completo | `UserHandlersInsertSignatureTests.cs` (solo `Id`+`Signature`, `204` sin cuerpo, `404`, `400`) + `SignatureServiceTests.cs` (RF-10.2/10.4/10.5) + metadata `PUT userisre` sin `403` |
+| 22 | `GetSignature` completo | `UserHandlersGetSignatureTests.cs` (`200` con `Signature`, `404`, `DISABLED` sin filtrar) + `SignatureServiceTests.cs` (RF-11.2/11.4) + metadata `GET usersre` con `SignatureResponse` sin `403` |
+
+Los otros 12 criterios (6-11, 13-16, 19, 20) quedan confirmados con la tabla de T-29, sin cambios de la fase 9 que los afecten. Tabla T-29 corregida en la fila 4 (decision de T-33: `{id}` sin restriccion, no `{id:int}`) y nota actualizada a las 1079 pruebas. Paquetes: `dotnet list sdd-mvp-test.slnx package` muestra solo `Microsoft.AspNetCore.Authentication.JwtBearer` (sosMVP), el stack de pruebas (test) y EF Core (Data, preexistente); ningun `.csproj` modificado en la fase 9 -> 0 paquetes nuevos (RNF-14). Fase 9 marcada como completada.

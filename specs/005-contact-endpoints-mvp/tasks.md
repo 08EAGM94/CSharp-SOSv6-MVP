@@ -1,4 +1,11 @@
-# Tareas — Caso de Uso: Contacto (005-contact-endpoints-mvp)
+# Tareas — Spec 005: Caso de uso Contacto
+
+- **Base:** `specs/005-contact-endpoints-mvp/spec.md` + `specs/005-contact-endpoints-mvp/plan.md`.
+- **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
+- **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
+- **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+
+---
 
 - [x] **T1. Fakes de contacto: `FakeContactChildrenService` y `FakeContactSelectService`.** RF-2, RF-3, RF-4, RF-5, RF-6, RF-7, RF-10
 - Hecho cuando: `dotnet build` compila y los fakes exponen contadores de llamada, últimos DTO recibidos, resultados configurables y `ExceptionToThrow` para `IEnterpriseChildrenService<ContactDTO>` e `ISelectService<ContactDTO>`.
