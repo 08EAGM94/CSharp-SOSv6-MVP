@@ -80,6 +80,30 @@ public static class UserHandlers
         return Results.Ok(new SignatureResponse(dto.Signature));
     }
 
+    public static async Task<IResult> RefreshAsync(
+        ICommonService<UserDTO> commonService,
+        ClaimsPrincipal principal,
+        JwtTokenFactory tokenFactory)
+    {
+        var id = AdminAuthorization.ReadUserIdClaim(principal);
+
+        if (id is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var user = await commonService.GetAsyncInfo(new UserDTO { Id = id.Value });
+
+        if (user.Visibility == DisabledVisibility)
+        {
+            throw new KeyNotFoundException("El usuario no existe o está deshabilitado.");
+        }
+
+        var token = tokenFactory.CreateToken(user);
+
+        return Results.Ok(new TokenResponse(token));
+    }
+
     public static async Task<IResult> LoginAsync(IUserService userService, JwtTokenFactory tokenFactory, UserDTO dto)
     {
         var user = await userService.Login(dto);

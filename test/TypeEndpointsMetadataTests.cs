@@ -271,7 +271,7 @@ public class TypeEndpointsMetadataTests
     {
         var userEndpoints = LazyUserEndpoints.Value;
 
-        Assert.Equal(9, userEndpoints.Count);
+        Assert.Equal(10, userEndpoints.Count);
 
         var login = userEndpoints.Single(endpoint => endpoint.RoutePattern.RawText == "/login/");
 

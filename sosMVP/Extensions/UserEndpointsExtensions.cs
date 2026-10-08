@@ -82,6 +82,12 @@ public static class UserEndpointsExtensions
             .Produces(StatusCodes.Status404NotFound)
             .WithName("GetSignature");
 
+        signatureEndpoints.MapPost("/refresh/", UserHandlers.RefreshAsync)
+            .Produces<TokenResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("Refresh");
+
         return endpoints;
     }
 }

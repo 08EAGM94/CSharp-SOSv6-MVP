@@ -76,7 +76,11 @@ Content-Type: application/json
 GET {{host}}/usersre/8
 Authorization: Bearer {{token}}
 
-### 10. InsertType (POST /type/) — requiere sesión
+### 10. Refresh (POST /refresh/) — requiere sesión (sin cuerpo)
+POST {{host}}/refresh/
+Authorization: Bearer {{token}}
+
+### 11. InsertType (POST /type/) — requiere sesión
 POST {{host}}/type/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -85,15 +89,15 @@ Content-Type: application/json
   "type": "REFRIGERACION"
 }
 
-### 11. GetType (GET /type/{id}) — requiere sesión
+### 12. GetType (GET /type/{id}) — requiere sesión
 GET {{host}}/type/1
 Authorization: Bearer {{token}}
 
-### 12. GetTypes (GET /type/) — requiere sesión
+### 13. GetTypes (GET /type/) — requiere sesión
 GET {{host}}/type/
 Authorization: Bearer {{token}}
 
-### 13. UpdateType (PUT /type/{id}) — requiere rol admin
+### 14. UpdateType (PUT /type/{id}) — requiere rol admin
 PUT {{host}}/type/8
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -102,7 +106,7 @@ Content-Type: application/json
   "type": "CLIMATIZACION"
 }
 
-### 14. UpdateTypeVisibility (PUT /typev/{id}) — requiere rol admin
+### 15. UpdateTypeVisibility (PUT /typev/{id}) — requiere rol admin
 PUT {{host}}/typev/8
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -111,11 +115,11 @@ Content-Type: application/json
   "visibility": "DISABLED"
 }
 
-### 15. GetTypesForSelects (GET /typesct/) — requiere sesión
+### 16. GetTypesForSelects (GET /typesct/) — requiere sesión
 GET {{host}}/typesct/
 Authorization: Bearer {{token}}
 
-### 16. InsertEnterprise (POST /enterprise/) — requiere sesión
+### 17. InsertEnterprise (POST /enterprise/) — requiere sesión
 POST {{host}}/enterprise/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -139,15 +143,15 @@ Content-Type: application/json
   }
 }
 
-### 17. GetEnterprise (GET /enterprise/{id}) — requiere sesión
+### 18. GetEnterprise (GET /enterprise/{id}) — requiere sesión
 GET {{host}}/enterprise/1
 Authorization: Bearer {{token}}
 
-### 18. GetEnterprises (GET /enterprises/) — requiere rol admin
+### 19. GetEnterprises (GET /enterprises/) — requiere rol admin
 GET {{host}}/enterprises/
 Authorization: Bearer {{token}}
 
-### 19. UpdateEnterprise (PUT /enterprise/{id}) — requiere rol admin
+### 20. UpdateEnterprise (PUT /enterprise/{id}) — requiere rol admin
 PUT {{host}}/enterprise/-9
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -167,7 +171,7 @@ Content-Type: application/json
   "email": "contacto@refrinor.com"
 }
 
-### 20. UpdateEnterpriseVisibility (PUT /enterprisev/{id}) — requiere rol admin
+### 21. UpdateEnterpriseVisibility (PUT /enterprisev/{id}) — requiere rol admin
 PUT {{host}}/enterprisev/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -176,11 +180,11 @@ Content-Type: application/json
   "visibility": "DISABLED"
 }
 
-### 21. GetEnterprisesForSelects (GET /enterprisesct/) — requiere sesión
+### 22. GetEnterprisesForSelects (GET /enterprisesct/) — requiere sesión
 GET {{host}}/enterprisesct/
 Authorization: Bearer {{token}}
 
-### 22. InsertDevice (POST /device/) — requiere sesión
+### 23. InsertDevice (POST /device/) — requiere sesión
 POST {{host}}/device/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -194,15 +198,15 @@ Content-Type: application/json
   "inventoryNumber": 1001
 }
 
-### 23. GetDevice (GET /device/{id}) — requiere sesión
+### 24. GetDevice (GET /device/{id}) — requiere sesión
 GET {{host}}/device/1
 Authorization: Bearer {{token}}
 
-### 24. GetDevicesByEnterprise (GET /devicesent/{enterpriseId}) — requiere rol admin
+### 25. GetDevicesByEnterprise (GET /devicesent/{enterpriseId}) — requiere rol admin
 GET {{host}}/devicesent/1
 Authorization: Bearer {{token}}
 
-### 25. UpdateDevices (PUT /device/{id}) — requiere rol admin
+### 26. UpdateDevices (PUT /device/{id}) — requiere rol admin
 PUT {{host}}/device/15
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -216,7 +220,7 @@ Content-Type: application/json
   "inventoryNumber": 1002
 }
 
-### 26. UpdateDevicesVisibility (PUT /devicev/{id}) — requiere rol admin
+### 27. UpdateDevicesVisibility (PUT /devicev/{id}) — requiere rol admin
 PUT {{host}}/devicev/15
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -225,11 +229,11 @@ Content-Type: application/json
   "visibility": "DISABLED"
 }
 
-### 27. GetDevicesByEnterpriseForSelect (GET /devicesentsct/{enterpriseId}) — requiere sesión
+### 28. GetDevicesByEnterpriseForSelect (GET /devicesentsct/{enterpriseId}) — requiere sesión
 GET {{host}}/devicesentsct/1
 Authorization: Bearer {{token}}
 
-### 28. InsertContact (POST /contact/) — requiere sesión
+### 29. InsertContact (POST /contact/) — requiere sesión
 POST {{host}}/contact/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -239,23 +243,23 @@ Content-Type: application/json
   "fullName": "María López Hernández"
 }
 
-### 29. GetContact (GET /contact/{id}) — requiere sesión
+### 30. GetContact (GET /contact/{id}) — requiere sesión
 GET {{host}}/contact/1
 Authorization: Bearer {{token}}
 
-### 30. GetContactsByEnterprise (GET /contactsent/{enterpriseId}) — requiere rol admin
+### 31. GetContactsByEnterprise (GET /contactsent/{enterpriseId}) — requiere rol admin
 GET {{host}}/contactsent/1
 Authorization: Bearer {{token}}
 
-### 31. GetContactsByEnterpriseForSelect (GET /contactsentsct/{enterpriseId}) — requiere sesión
+### 32. GetContactsByEnterpriseForSelect (GET /contactsentsct/{enterpriseId}) — requiere sesión
 GET {{host}}/contactsentsct/1
 Authorization: Bearer {{token}}
 
-### 32. GetContactsForSelect (GET /contactsct/) — requiere rol admin
+### 33. GetContactsForSelect (GET /contactsct/) — requiere rol admin
 GET {{host}}/contactsct/
 Authorization: Bearer {{token}}
 
-### 33. UpdateContact (PUT /contact/{id}) — requiere rol admin
+### 34. UpdateContact (PUT /contact/{id}) — requiere rol admin
 PUT {{host}}/contact/18
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -265,7 +269,7 @@ Content-Type: application/json
   "fullName": "María Hernández"
 }
 
-### 34. UpdateContactVisibility (PUT /contactv/{id}) — requiere rol admin
+### 35. UpdateContactVisibility (PUT /contactv/{id}) — requiere rol admin
 PUT {{host}}/contactv/18
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -274,7 +278,7 @@ Content-Type: application/json
   "visibility": "DISABLED"
 }
 
-### 35. InsertBinnacle (POST /binnacle/) — requiere sesión propiedades opcionales pero ambos validos: "service": "Mantenimiento preventivo de unidad condensadora", "deviceId": 1 
+### 36. InsertBinnacle (POST /binnacle/) — requiere sesión propiedades opcionales pero ambos validos: "service": "Mantenimiento preventivo de unidad condensadora", "deviceId": 1 
 POST {{host}}/binnacle/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -284,15 +288,15 @@ Content-Type: application/json
   "service": "Mantenimiento preventivo de unidad condensadora"
 }
 
-### 36. GetBinnacle (GET /binnacle/{id}) — requiere sesión
+### 37. GetBinnacle (GET /binnacle/{id}) — requiere sesión
 GET {{host}}/binnacle/1
 Authorization: Bearer {{token}}
 
-### 37. FollowupList (GET /binnaclesfu/{page}/{elemsKey}) — requiere sesión
+### 38. FollowupList (GET /binnaclesfu/{page}/{elemsKey}) — requiere sesión
 GET {{host}}/binnaclesfu/1/5
 Authorization: Bearer {{token}}
 
-### 38. BinnaclesReport (POST /binnaclesr/) — requiere rol admin
+### 39. BinnaclesReport (POST /binnaclesr/) — requiere rol admin
 POST {{host}}/binnaclesr/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -312,7 +316,7 @@ Content-Type: application/json
   }
 }
 
-### 39. UpdateBinnacle (PUT /binnacle/{id}) — requiere rol admin
+### 40. UpdateBinnacle (PUT /binnacle/{id}) — requiere rol admin
 PUT {{host}}/binnacle/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -325,7 +329,7 @@ Content-Type: application/json
   "amount": 1500.5
 }
 
-### 40. UpdateBinnacleVisibility (PUT /binnaclev/{id}) — requiere rol admin
+### 41. UpdateBinnacleVisibility (PUT /binnaclev/{id}) — requiere rol admin
 PUT {{host}}/binnaclev/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -334,7 +338,7 @@ Content-Type: application/json
   "visibility": "DISABLED"
 }
 
-### 41. FollowupPartial (PUT /binnaclefup/{id}) — requiere sesión
+### 42. FollowupPartial (PUT /binnaclefup/{id}) — requiere sesión
 PUT {{host}}/binnaclefup/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -346,11 +350,11 @@ Content-Type: application/json
   "startingDate": "2026-10-07"
 }
 
-### 42. ResetActivities (PUT /binnaclera/{id}) — requiere sesión (sin cuerpo)
+### 43. ResetActivities (PUT /binnaclera/{id}) — requiere sesión (sin cuerpo)
 PUT {{host}}/binnaclera/1
 Authorization: Bearer {{token}}
 
-### 43. CancelBinnacle (PUT /binnaclecb/{id}) — requiere sesión
+### 44. CancelBinnacle (PUT /binnaclecb/{id}) — requiere sesión
 PUT {{host}}/binnaclecb/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -360,7 +364,7 @@ Content-Type: application/json
   "cancelDesc": "El cliente canceló la orden por cambio de fecha"
 }
 
-### 44. FinishBinnacle (PUT /binnaclefsh/{id}) — requiere sesión
+### 45. FinishBinnacle (PUT /binnaclefsh/{id}) — requiere sesión
 PUT {{host}}/binnaclefsh/1
 Authorization: Bearer {{token}}
 Content-Type: application/json

@@ -4,7 +4,7 @@
 - **Orden:** de dependencia. Solo se ejecuta una tarea cada vez; se marca `[x]` y se PARA.
 - **TDD:** primero los tests de la tarea (en rojo), después el código. Nunca se cierra una tarea con `dotnet test` en rojo.
 - **Comprobación de cierre de cada tarea:** `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
-- **Nota de alcance:** las fases 0-8 corresponden al alcance original de la spec (siete endpoints, ya ejecutado). El cambio de spec que anade `InsertSignature` (RF-10), `GetSignature` (RF-11) y el control de acceso RF-1.8 se refleja en la **fase 9**, unica pendiente.
+- **Nota de alcance:** las fases 0-8 corresponden al alcance original de la spec (siete endpoints, ya ejecutado). El cambio de spec que anade `InsertSignature` (RF-10), `GetSignature` (RF-11) y el control de acceso RF-1.8 se refleja en la **fase 9** (completada). El cambio de spec del 2026-10-08 que anade `refresh` (RF-12, HU-7, CE-29 a CE-34) se refleja en la **fase 10**, unica pendiente.
 
 ---
 
@@ -561,3 +561,68 @@
 | 22 | `GetSignature` completo | `UserHandlersGetSignatureTests.cs` (`200` con `Signature`, `404`, `DISABLED` sin filtrar) + `SignatureServiceTests.cs` (RF-11.2/11.4) + metadata `GET usersre` con `SignatureResponse` sin `403` |
 
 Los otros 12 criterios (6-11, 13-16, 19, 20) quedan confirmados con la tabla de T-29, sin cambios de la fase 9 que los afecten. Tabla T-29 corregida en la fila 4 (decision de T-33: `{id}` sin restriccion, no `{id:int}`) y nota actualizada a las 1079 pruebas. Paquetes: `dotnet list sdd-mvp-test.slnx package` muestra solo `Microsoft.AspNetCore.Authentication.JwtBearer` (sosMVP), el stack de pruebas (test) y EF Core (Data, preexistente); ningun `.csproj` modificado en la fase 9 -> 0 paquetes nuevos (RNF-14). Fase 9 marcada como completada.
+
+---
+
+## Fase 10 — Renovacion de sesion: `POST refresh/` (RF-12, HU-7, CE-29 a CE-34)
+
+- **Estado:** completada.
+- **Origen:** cambio de spec del 2026-10-08 que anade RF-12 (`refresh`), HU-7, CE-29 a CE-34 y enmiendas a RF-7.7b, RF-1.8, RNF-9 y los criterios de finalizacion. `JwtTokenFactory`, `Program.cs`, la DI y el grupo de sesion sin politica **ya existen**: la fase solo anade el delegado, el `MapPost`, las pruebas y los ajustes de conteo (plan, seccion 10).
+- **TDD:** primero los tests de la tarea (en rojo), despues el codigo. Una tarea, `dotnet build` y `dotnet test` en verde, y se PARA.
+
+---
+
+### T-37 `UserHandlers`: delegate de `POST refresh/`
+
+- [x] Crear los tests rojos `test/UserHandlersRefreshTests.cs` (camino feliz, casos limite y caso de error) y despues anadir `RefreshAsync` en `sosMVP/Handlers/UserHandlers.cs`, que reciba `ICommonService<UserDTO>`, `ClaimsPrincipal` y `JwtTokenFactory`.
+- [x] Leer el `Id` de la sesion con `AdminAuthorization.ReadUserIdClaim`; si es nulo (claim ausente o valor no numerico) devolver `401` **sin** invocar el caso de uso.
+- [x] Consultar el usuario con `GetAsyncInfo(new UserDTO { Id = id })`; si `Visibility == "DISABLED"`, lanzar `KeyNotFoundException` con mensaje en espanol (-> `404`), y propagar sin capturar la `KeyNotFoundException` del caso de uso (usuario borrado, -> `404`).
+- [x] Emitir la sesion con `CreateToken(user)` y responder `200` con `TokenResponse`; no leer el claim de rol ni devolver `403` en ningun caso.
+
+**Verificado (T-37):** 8 pruebas en `test/UserHandlersRefreshTests.cs`: camino feliz `200` con token no vacio y `GetAsyncInfo` recibiendo `Id == 7` (RF-12.1); el token nuevo porta el `Role` del almacen (`user`) y no el de la sesion entrante (`admin`) (RF-12.3, CE-32); vigencia de 30 minutos sin renovacion automatica (RF-12.2, RF-7.7b); lista de cierre exacta `Id`, `Name`, `Surname`, `Nickname`, `Role`, `Signature`, sin `Password`, `ConfPwd` ni `Visibility` (RF-12.3, CE-33); sesion sin claim `Id` y claim `Id` no numerico -> `401` sin invocar `GetAsyncInfo` (RF-12.7, CE-30); `DISABLED` -> `KeyNotFoundException` traducida a `404` (RF-12.6, CE-31); `KeyNotFoundException` del caso de uso -> `404` (RF-12.5, CE-31). TDD: rojo con 8 errores CS0117 antes de anadir el delegado. `dotnet build` con 0 errores y `dotnet test` con 1087 pruebas y 0 fallos.
+
+**RF cubiertos:** RF-12.1, RF-12.2, RF-12.3, RF-12.5, RF-12.6, RF-12.7, RF-1.8, CE-30, CE-31, CE-32, CE-33.
+
+**Hecho cuando:** el test de datos frescos observa que el token nuevo porta el `Role` del almacen y no el de la sesion entrante; el `Id` ilegible produce `401` sin invocar `GetAsyncInfo`; `DISABLED` y la `KeyNotFoundException` del caso de uso se traducen a `404` sin emitir sesion; el token nuevo vence a los 30 minutos y no contiene `Password`, `ConfPwd` ni `Visibility`.
+
+---
+
+### T-38 Registro del endpoint y metadata a 10 rutas
+
+- [x] Declarar `signatureEndpoints.MapPost("/refresh/", UserHandlers.RefreshAsync)` con `.Produces<TokenResponse>(StatusCodes.Status200OK)`, `.Produces(401)` y `.Produces(404)`, **sin** `400` ni `403`, y `.WithName("Refresh")`; sin `Produces` sobre el grupo.
+- [x] Ampliar `test/UserEndpointsMetadataTests.cs` a 10 rutas: fila `("/refresh/", "POST", [200, 401, 404])` en `ExpectedContract`, `Assert.Equal(10, ...)`, `refresh` en las teorias de rutas con cuerpo (tipo `TokenResponse`), excluido de `AdminRoutes_RequireTheAdminOnlyPolicy` y comprobado con `IAuthorizeData` **sin** `Policy`.
+- [x] Actualizar `test/TypeEndpointsMetadataTests.UserEndpointsMetadataRemainIntact` de `Assert.Equal(9, ...)` a `10`.
+- [x] No tocar `JwtTokenFactory`, `Program.cs`, `appsettings.json` ni `hexArch/**` (principios 3 y 5).
+
+**Verificado (T-38):** `signatureEndpoints.MapPost("/refresh/", UserHandlers.RefreshAsync)` con `.Produces<TokenResponse>(200)` + `.Produces(401)` + `.Produces(404)` y `.WithName("Refresh")`, sin `400` ni `403` y sin `Produces` sobre el grupo. `UserEndpointsMetadataTests.cs` ampliado a 10 rutas: fila `("/refresh/", "POST", [200, 401, 404])` en `ExpectedContract`, `AllTenRoutesAreDeclaredWithTheirExpectedMethods` (`Assert.Equal(10, ...)`) con la ruta presente, `EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan` y `RoutesWithBody_DeclareTheirResponseType` (tipo `TokenResponse`) con la fila nueva, `SessionRoutes_RequireASessionWithoutAnyRolePolicy` (teoria renombrada) incluyendo `refresh` con `IAuthorizeData` sin `Policy`, y `AdminRoutes_RequireTheAdminOnlyPolicy` excluyendo `/refresh/` (siguen 6 rutas con `AdminOnly`). `test/TypeEndpointsMetadataTests.UserEndpointsMetadataRemainIntact` actualizado a `Assert.Equal(10, ...)`. TDD: rojo con 5 fallos (9≠10 y `Find` inexistente para `refresh`) antes de anadir el `MapPost`. `dotnet build` con 0 errores y `dotnet test` con 1090 pruebas y 0 fallos.
+
+**RF cubiertos:** RF-12.1, RF-12.4, RF-12.8, RF-1.8, RNF-9, CE-29.
+
+**Hecho cuando:** el `EndpointDataSource` expone exactamente 10 rutas; `refresh` queda en el grupo con `RequireAuthorization()` sin `Policy`, las seis de administracion conservan `AdminOnly`, `login` sigue sin `IAuthorizeData`, y los codigos declarados de `refresh` son exactamente `[200, 401, 404]`.
+
+---
+
+### T-39 Cierre de la fase 10: contraste y verificacion
+
+- [x] Contrastar los criterios de finalizacion tocados por el cambio de spec (1, 2, 3, 10, 17, 18 y el nuevo 23) contra las pruebas de la fase 10 y anadir la tabla de contraste al final de esta fase.
+- [x] Ejecutar `dotnet build` (0 errores) y `dotnet test test/test.csproj` (0 fallos).
+- [x] Confirmar con `dotnet list package` que la fase 10 no ha anadido ningun paquete.
+- [x] Marcar la tarea como `[x]` y la fase 10 como completada; no tocar las fases anteriores.
+
+**RF cubiertos:** RF-12, RF-1.8, RNF-9, RNF-14.
+
+**Hecho cuando:** los 23 criterios de la seccion 8 de la spec tienen una prueba o una comprobacion que los respalda, no hay paquetes nuevos y `dotnet test` no reporta fallos.
+
+**Verificado (T-39):** contraste de los 7 criterios tocados por el cambio de spec de la fase 10:
+
+| # | Criterio | Respaldo de la fase 10 |
+| --- | --- | --- |
+| 1 | Diez endpoints conforme a su criterio | diez suites `test/UserHandlers*Tests.cs` (la decima es `test/UserHandlersRefreshTests.cs`, T-37) mas `test/UserEndpointsMetadataTests.cs` (`AllTenRoutesAreDeclaredWithTheirExpectedMethods`, diez rutas) |
+| 2 | Los nueve endpoints protegidos rechazan `401` sin sesion valida o vencida | diez rutas con `RequireAuthorization` (6 `AdminOnly` + `InsertSignature` + `GetSignature` + `refresh`) en `UserEndpointsMetadataTests.cs`; `refresh` declara `401` (`EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan`) y cubre CE-29 por su grupo; el `401` real lo emite el middleware y no se prueba sin `WebApplicationFactory` (limitacion anotada en T-20/T-29) |
+| 3 | `403` sin rol `admin`; firma y `refresh` sin `403` por rol | `test/AdminAuthorizationTests.cs` intacto mas `SessionRoutes_RequireASessionWithoutAnyRolePolicy` (incluye `refresh`, `IAuthorizeData` sin `Policy`) y `EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan` (refresh `[200, 401, 404]`, sin `403`) |
+| 10 | Contrato completo de `login`; renovacion mientras la sesion siga vigente por RF-12 | `test/UserHandlersLoginTests.cs` (30 min sin renovacion automatica) mas `test/UserHandlersRefreshTests.cs` (`NewSession_ExpiresThirtyMinutesAfterItsEmission`) y metadata `POST /refresh/` sin `400` |
+| 17 | Cada endpoint con su limite y error, datos propios | `test/UserHandlersRefreshTests.cs` (8 pruebas: 401 sin claim `Id` y con `Id` no numerico sin consultar el almacen, `DISABLED` -> `404`, `KeyNotFoundException` -> `404`, datos frescos, lista de cierre, vigencia), sin datos compartidos |
+| 18 | El proyecto compila y todas las pruebas pasan | `dotnet build` 0 errores; `dotnet test test/test.csproj` -> 1090 pruebas, 0 fallos |
+| 23 | `refresh` completo | `test/UserHandlersRefreshTests.cs` (200 con token cuyo `Role` es el del almacen, lista de cierre sin `Password`/`ConfPwd`/`Visibility`, `401` sin `Id` utilizable, `404` para borrado o `DISABLED`) mas metadata `POST /refresh/` `[200, 401, 404]` sin `403` (T-38); CE-34 (sin revocacion de la sesion anterior) por construccion, sin codigo de revocacion que probar |
+
+Los otros 16 criterios (4-9, 11-16, 19-22) quedan confirmados con las tablas de T-29 y T-36, sin cambios de la fase 10 que los afecten. Paquetes: `dotnet list sdd-mvp-test.slnx package` muestra `Microsoft.AspNetCore.Authentication.JwtBearer` (sosMVP), el stack de pruebas (test) y EF Core (Data, preexistente); ningun `.csproj` modificado en la fase 10 -> 0 paquetes nuevos (RNF-14). Fase 10 marcada como completada.

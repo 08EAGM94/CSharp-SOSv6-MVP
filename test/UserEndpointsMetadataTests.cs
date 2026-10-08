@@ -34,7 +34,8 @@ public class UserEndpointsMetadataTests
         ("/login/", "POST", [200, 400, 404]),
         ("/adminv/", "POST", [200, 400, 401, 403, 404]),
         ("/userisre/{id}", "PUT", [204, 400, 401, 404]),
-        ("/usersre/{id}", "GET", [200, 400, 401, 404])
+        ("/usersre/{id}", "GET", [200, 400, 401, 404]),
+        ("/refresh/", "POST", [200, 401, 404])
     ];
 
     private static IReadOnlyList<RouteEndpoint> MaterializeEndpoints()
@@ -79,9 +80,9 @@ public class UserEndpointsMetadataTests
     }
 
     [Fact]
-    public void AllNineRoutesAreDeclaredWithTheirExpectedMethods()
+    public void AllTenRoutesAreDeclaredWithTheirExpectedMethods()
     {
-        Assert.Equal(9, Endpoints().Count);
+        Assert.Equal(10, Endpoints().Count);
 
         foreach (var (route, method, _) in ExpectedContract)
         {
@@ -103,7 +104,8 @@ public class UserEndpointsMetadataTests
     [Theory]
     [InlineData("/userisre/{id}", "PUT")]
     [InlineData("/usersre/{id}", "GET")]
-    public void SignatureRoutes_RequireASessionWithoutAnyRolePolicy(string route, string method)
+    [InlineData("/refresh/", "POST")]
+    public void SessionRoutes_RequireASessionWithoutAnyRolePolicy(string route, string method)
     {
         var authorizeData = Find(route, method).Metadata.GetOrderedMetadata<IAuthorizeData>().ToList();
 
@@ -121,6 +123,7 @@ public class UserEndpointsMetadataTests
     [InlineData("/adminv/", "POST")]
     [InlineData("/userisre/{id}", "PUT")]
     [InlineData("/usersre/{id}", "GET")]
+    [InlineData("/refresh/", "POST")]
     public void EveryRoute_DeclaresExactlyTheStatusCodesOfThePlan(string route, string method)
     {
         var expected = ExpectedContract.Single(contract => contract.Route == route && contract.Method == method);
@@ -157,7 +160,7 @@ public class UserEndpointsMetadataTests
     [Fact]
     public void AdminRoutes_RequireTheAdminOnlyPolicy()
     {
-        var adminRoutes = ExpectedContract.Where(contract => contract.Route is not ("/login/" or "/userisre/{id}" or "/usersre/{id}"));
+        var adminRoutes = ExpectedContract.Where(contract => contract.Route is not ("/login/" or "/userisre/{id}" or "/usersre/{id}" or "/refresh/"));
 
         Assert.Equal(6, adminRoutes.Count());
 
@@ -199,6 +202,7 @@ public class UserEndpointsMetadataTests
     [InlineData("/login/", "POST", typeof(TokenResponse))]
     [InlineData("/adminv/", "POST", typeof(AdminConfirmation))]
     [InlineData("/usersre/{id}", "GET", typeof(SignatureResponse))]
+    [InlineData("/refresh/", "POST", typeof(TokenResponse))]
     public void RoutesWithBody_DeclareTheirResponseType(string route, string method, Type expectedType)
     {
         var declaredType = Assert.Single(Find(route, method).Metadata
