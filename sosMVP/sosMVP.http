@@ -1,8 +1,7 @@
 ### Variables (ajustables)
 @host = https://localhost:7104
 @httpHost = http://localhost:5010
-@token = your_token
-### 1. InsertUser (POST /user/) — requiere rol admin
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJTb3NNVlAuQXBpQ2xpZW50cyIsImlzcyI6IlNvc01WUCIsImV4cCI6MTc5MTQ4Mjk4OSwiaWF0IjoxNzkxNDgxMTg5LCJuYmYiOjE3OTE0ODExODksIklkIjoiOCIsIk5hbWUiOiJKdWFuIENhcmxvcyIsIlN1cm5hbWUiOiJQw6lyZXogIEdvbnrDoWxleiIsIk5pY2tuYW1lIjoiamNwZXJlejIwMjYiLCJSb2xlIjoiYWRtaW4iLCJTaWduYXR1cmUiOiJKdWFuX0Nhcmxvc19Qw6lyZXpfR29uesOhbGV6X3NpZ24ucG5nIn0.jRgtppxdvIIlZ14WezayLfDTimGEWmJRvl1fhMbBu2o
 POST {{host}}/user/
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -70,7 +69,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "signature": "Juan Carlos Pérez González"
+  "signature": "Juan_Carlos_Pérez_González_sign.png"
 }
 
 ### 9. GetSignature (GET /usersre/{id}) — requiere sesión
@@ -149,7 +148,7 @@ GET {{host}}/enterprises/
 Authorization: Bearer {{token}}
 
 ### 19. UpdateEnterprise (PUT /enterprise/{id}) — requiere rol admin
-PUT {{host}}/enterprise/999
+PUT {{host}}/enterprise/-9
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -204,13 +203,12 @@ GET {{host}}/devicesent/1
 Authorization: Bearer {{token}}
 
 ### 25. UpdateDevices (PUT /device/{id}) — requiere rol admin
-PUT {{host}}/device/1
+PUT {{host}}/device/15
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "id": 999,
-  "enterpriseId": 1,
   "typeId": 1,
   "brand": "Carrier",
   "model": "Xarios 5RTU Plus",
@@ -219,7 +217,7 @@ Content-Type: application/json
 }
 
 ### 26. UpdateDevicesVisibility (PUT /devicev/{id}) — requiere rol admin
-PUT {{host}}/devicev/1
+PUT {{host}}/devicev/15
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -258,18 +256,17 @@ GET {{host}}/contactsct/
 Authorization: Bearer {{token}}
 
 ### 33. UpdateContact (PUT /contact/{id}) — requiere rol admin
-PUT {{host}}/contact/1
+PUT {{host}}/contact/18
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "id": 999,
-  "enterpriseId": 1,
-  "fullName": "María López Hernández"
+  "fullName": "María Hernández"
 }
 
 ### 34. UpdateContactVisibility (PUT /contactv/{id}) — requiere rol admin
-PUT {{host}}/contactv/1
+PUT {{host}}/contactv/18
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -283,10 +280,8 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "contactId": 1,
-  "service": "Mantenimiento preventivo de unidad condensadora",
-  "deviceId": 1,
-  "amount": 1500.5
+  "contactId": 16,
+  "service": "Mantenimiento preventivo de unidad condensadora"
 }
 
 ### 36. GetBinnacle (GET /binnacle/{id}) — requiere sesión
@@ -306,7 +301,14 @@ Content-Type: application/json
   "page": 1,
   "elemsKey": 5,
   "binnFilter": {
-    "visibility": "ENABLED"
+    "ContactId": "",
+    "Activity": "Servicio",
+    "DeviceId": "",
+    "Status": "en proceso",
+    "StartedOrEnded": "Inicio",
+    "LeftDay": "2026-10-06",
+    "RightDay": "2026-11-06",
+    "Visibility": "ENABLED"
   }
 }
 
@@ -317,11 +319,10 @@ Content-Type: application/json
 
 {
   "id": 999,
+  "userId": 8,
   "status": "en proceso",
   "service": "Mantenimiento preventivo de unidad condensadora",
-  "amount": 1500.5,
-  "activitiesDone": null,
-  "hints": null
+  "amount": 1500.5
 }
 
 ### 40. UpdateBinnacleVisibility (PUT /binnaclev/{id}) — requiere rol admin
@@ -342,7 +343,7 @@ Content-Type: application/json
   "id": 999,
   "activitiesDone": "Se realizó diagnóstico y cambio de contactor",
   "hints": "Se recomienda revisar el compressor en la próxima visita",
-  "startingDate": "2026-10-06"
+  "startingDate": "2026-10-07"
 }
 
 ### 42. ResetActivities (PUT /binnaclera/{id}) — requiere sesión (sin cuerpo)

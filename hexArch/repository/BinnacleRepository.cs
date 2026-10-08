@@ -357,8 +357,8 @@ public class BinnacleRepository : IBinnacleRepository
                         || bitacora.EquipoId == deviceIdFilter)
                     && bitacora.Estatus == binnFilter["Status"]
                     && (binnFilter["LeftDay"] == string.Empty
-                        || (EF.Property<DateOnly>(bitacora, binnFilter["startedOrEnded"]) >= leftDay
-                            && EF.Property<DateOnly>(bitacora, binnFilter["startedOrEnded"]) <= rightDay))
+                        || (EF.Property<DateOnly>(bitacora, binnFilter["StartedOrEnded"]) >= leftDay
+                            && EF.Property<DateOnly>(bitacora, binnFilter["StartedOrEnded"]) <= rightDay))
                     && bitacora.Visibilidad == binnFilter["Visibility"]);
 
             List<BinnacleDTO> reportElements = await _dbContext.Bitacoras
@@ -373,8 +373,8 @@ public class BinnacleRepository : IBinnacleRepository
                         || source.bitacora.EquipoId == deviceIdFilter)
                     && source.bitacora.Estatus == binnFilter["Status"]
                     && (binnFilter["LeftDay"] == string.Empty
-                        || (EF.Property<DateOnly>(source.bitacora, binnFilter["startedOrEnded"]) >= leftDay
-                            && EF.Property<DateOnly>(source.bitacora, binnFilter["startedOrEnded"]) <= rightDay))
+                        || (EF.Property<DateOnly>(source.bitacora, binnFilter["StartedOrEnded"]) >= leftDay
+                            && EF.Property<DateOnly>(source.bitacora, binnFilter["StartedOrEnded"]) <= rightDay))
                     && source.bitacora.Visibilidad == binnFilter["Visibility"])
                 .OrderBy(source => source.bitacora.Id)
                 .Skip((page!.Value - 1) * elemsKey!.Value)
